@@ -21,10 +21,7 @@ class PygameEscapeTheMazeView(object):
                             wall_segment.height)
             pygame.draw.rect(self.screen, pygame.Color(wall_segment.color), r)
         #draw the maze character
-        r = pygame.Rect(self.model.character.x_pos, 
-                        self.model.character.y_pos, 
-                        self.model.character.width, 
-                        self.model.character.height)
+        r = self.model.character.rect
         pygame.draw.rect(self.screen, pygame.Color(self.model.character.color), r)
         pygame.display.update()
 
@@ -70,15 +67,21 @@ class CreateMazeSegment(object):
         self.width = width
         self.height = height
         self.color = "black"
+        self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
 
 class EscapeTheMazeModel(object):
     def __init__(self):
+        # Initialize Character location
+        self.character = Character(640/2 + 20, 450, 20, 20)
+
+        # Definte wall segment locations
         self.maze_segments = []
         self.WALL_WIDTH = 4
         self.MARGIN = 30
         self.WALL_LENGTH = 20 + self.WALL_WIDTH
         self.MATRIX_CENTERS = 48
         maze_matrix = GenerateMaze()
+
         ###create rectangles for the maze to draw
         for i in range(maze_matrix.row_length):  #for each of the rows
             print maze_matrix.maze_matrix[i][:]
@@ -109,17 +112,38 @@ class EscapeTheMazeModel(object):
                                                  self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH, 
                                                  self.WALL_WIDTH, 
                                                  self.WALL_LENGTH))
-        self.character = Character(640/2, 450, 20, 20)
 
+        #initialize a list of maze segments rectangles
+        self.rect = []
+        for obj in self.maze_segments:
+            self.rect.append(obj.rect)
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
         self.model = model
         self.move_ticker = 0
     def handle_event(self, event):
+        self.model.character.rect = pygame.Rect(self.model.character.x_pos, self.model.character.y_pos,
+            self.model.character.width, self.model.character.height)
+
         left = False
         keys = pygame.key.get_pressed()
         #if event.type == pygame.KEYDOWN:
+
+        #check for collisions
+        collide = self.model.character.rect.collidelist(self.model.rect) != -1
+        print collide
+
+        direction_vel = [1,1,1,1]
+
+        if keys[pygame.K_a] and collide:
+            direction_vel[0] = 0
+        elif keys[pygame.K_d] and collide:
+            direction_vel[1] = 0
+        elif keys[pygame.K_w] and collide:
+            direction_vel[2] = 0
+        elif keys[pygame.K_s] and collide:
+            direction_vel[3] = 0
         """for diagonal movement, check diagonal first"""
         if keys[pygame.K_a] and keys[pygame.K_w]:
             if self.move_ticker > self.model.character.refresh_rate + 2:
