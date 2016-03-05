@@ -1,7 +1,9 @@
 import pygame
 from pygame.locals import QUIT, KEYDOWN, MOUSEMOTION
 import time
+import math
 from random import choice
+from Maze_Test
 
 class PygameEscapeTheMazeView(object):
     """creates a escape the maze game in the pygame window"""
@@ -9,40 +11,22 @@ class PygameEscapeTheMazeView(object):
         """Initialize the view with the specified model"""
         self.model = model
         self.screen = screen
-
     def draw(self):
         """Draw the game state to the screen"""
         #draw the maze
         self.screen.fill(pygame.Color('grey'))
-        for wall_segment in self.model.maze_segments:
-            r = pygame.Rect(wall_segment.x_pos, 
-                            wall_segment.y_pos, 
-                            wall_segment.width, 
-                            wall_segment.height)
-            pygame.draw.rect(self.screen, pygame.Color(wall_segment.color), r)
+        for rect in self.model.maze_rect_list:
+            pygame.draw.rect(self.screen, pygame.Color('black'), rect)
+        #for maze_segment in self.model.maze_segments:
+        #    rect = pygame.Rect(maze_segment.x_pos, maze_segment.y_pos, maze_segment.width, maze_segment.height)
+        #    pygame.draw.rect(self.screen, pygame.Color('black'), rect)
         #draw the maze character
-        r = pygame.Rect(self.model.character.x_pos, 
-                        self.model.character.y_pos, 
-                        self.model.character.width, 
-                        self.model.character.height)
+        r = self.model.character.rect
         pygame.draw.rect(self.screen, pygame.Color(self.model.character.color), r)
+        self.model.fog_of_war.draw_fog_of_war(self.screen)
+        #for rect in self.model.collision.collision_rect_list:
+        #   pygame.draw.rect(self.screen, pygame.Color('green'), rect)
         pygame.display.update()
-
-class Character(object):
-    """represents the character"""
-    def __init__(self, x_pos, y_pos, width, height):
-        self.x_pos = x_pos
-        self.y_pos = y_pos
-        self.width = width
-        self.height = height
-        self.color = "red"
-        self.vel = 5            #how many pixels it updates
-        self.refresh_rate = 3   #how many loops before it updates the velocity
-
-"""class Maze(object):
-    #creates the matrix for the maze
-    def __init__(self, maze_matrix):
-        self.maze_matrix = maze_matrix"""
 
 class GenerateMaze(object):
     def __init__(self):
@@ -70,14 +54,110 @@ class CreateMazeSegment(object):
         self.width = width
         self.height = height
         self.color = "black"
+        self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
+    def update_maze(self):
+        self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
+
+
+class FogOfWar(object):
+    def __init__(self, character, x_pos, y_pos, radius):
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+        self.radius = radius
+        self.character = character
+    def update_fog_of_war(self):
+        self.x_pos = self.character.x_pos + self.character.width/2
+        self.y_pos = self.character.y_pos + self.character.height/2
+    def draw_fog_of_war(self, screen):
+        left_rect = pygame.Rect(0, 0, self.x_pos - self.radius, 1000)
+        right_rect = pygame.Rect(self.x_pos + self.radius, 0, 1000, 1000)
+        bottom_rect = pygame.Rect(0, self.y_pos + self.radius, 1000, 1000)
+        top_rect = pygame.Rect(0, 0, 1000,  self.y_pos - self.radius)
+        pygame.draw.rect(screen, pygame.Color('black'), left_rect)
+        pygame.draw.rect(screen, pygame.Color('black'), right_rect)
+        pygame.draw.rect(screen, pygame.Color('black'), bottom_rect)
+        pygame.draw.rect(screen, pygame.Color('black'), top_rect)
+        for i in range(50):
+            ang = i * math.pi * 2.0 / 50
+            dx = int(math.cos(ang) * (self.radius + 50))
+            dy = int(math.sin(ang) * (self.radius + 50))
+            x = self.x_pos + dx
+            y = self.y_pos + dy
+            pygame.draw.circle(screen, 
+                            pygame.Color('black'), 
+                            (x, y), 
+                            50)
+class Character(object):
+    """represents the character"""
+    def __init__(self, x_pos, y_pos, width, height):
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+        self.width = width
+        self.height = height
+        self.color = "red"
+        self.vel = 1           #how many pixels it updates
+        self.diag_vel = .7
+        self.refresh_rate = 0  #how many loops before it updates the velocity
+
+class Character_Collision_Rect(object):
+    def __init__(self, character, width, height):
+        self.character = character
+        self.width = width
+        self.height = height
+        ##create rectangle list and boolean list
+        self.collision_rect_list = []
+        self.collision_bool_list = []
+        self.collision_character_bool = 'false'
+        ##add four rectangles 
+        for i in range(4):
+            self.collision_rect_list.append(pygame.Rect(0,0,0,0))
+        for i in range(4):
+            self.collision_bool_list.append('False')
+
+    def return_collision_bool(self, rect, maze_rect_list):
+        ##check if rect is intersecting with elements in maze_rect_list
+            return rect.collidelist(maze_rect_list) != -1
+
+    def update_collision(self, character, maze_rect_list):
+        #creates new collision rectangles and stores them in the list initialized
+        self.collision_rect_list[0] = pygame.Rect(character.x_pos - self.width,
+                                                        character.y_pos,
+                                                        self.width,
+                                                        self.height)
+        self.collision_rect_list[1] = pygame.Rect(character.x_pos + character.width,
+                                                        character.y_pos,
+                                                        self.width,
+                                                        self.height)
+        self.collision_rect_list[2] = pygame.Rect(character.x_pos,
+                                                        character.y_pos - self.width,
+                                                        self.height,
+                                                        self.width)
+        self.collision_rect_list[3] = pygame.Rect(character.x_pos,
+                                                        character.y_pos + character.height,
+                                                        self.height,
+                                                        self.width)
+        for i in range(len(self.collision_rect_list)):
+            self.collision_bool_list[i] = self.return_collision_bool(self.collision_rect_list[i],
+                                                                maze_rect_list)
+        self.collision_character_bool = self.return_collision_bool(self.character.rect, maze_rect_list)
+
+"""class Maze(object):
+    #creates the matrix for the maze
+    def __init__(self, maze_matrix):
+        self.maze_matrix = maze_matrix"""
+
 
 class EscapeTheMazeModel(object):
     def __init__(self):
+        ############################
+        ##GERENATE MAZE RECTANGLES##
+        ############################
         self.maze_segments = []
-        self.WALL_WIDTH = 4
+        self.WALL_WIDTH = 3
         self.MARGIN = 30
-        self.WALL_LENGTH = 20 + self.WALL_WIDTH
-        self.MATRIX_CENTERS = 48
+        self.WALL_LENGTH = 23 + self.WALL_WIDTH
+        self.MATRIX_CENTERS = 53
+        self.isolated_direction = 'yes'
         maze_matrix = GenerateMaze()
         ###create rectangles for the maze to draw
         for i in range(maze_matrix.row_length):  #for each of the rows
@@ -88,75 +168,163 @@ class EscapeTheMazeModel(object):
                     if i != 0:
                         if maze_matrix.maze_matrix[i-1][j] == 1:        ##upper wall
                             self.maze_segments.append(CreateMazeSegment(self.MARGIN + j*self.MATRIX_CENTERS + self.WALL_WIDTH/2,
-                                                 self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH - self.WALL_LENGTH, 
+                                                 self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH/2 - self.WALL_LENGTH, 
                                                  self.WALL_WIDTH, 
-                                                 self.WALL_LENGTH))
+                                                 self.WALL_LENGTH + self.WALL_WIDTH))
+                            if self.isolated_direction == 'yes':
+                                self.isolated_direction = 'down'
+                            else:
+                                self.isolated_direction = 'no'
                     if j != 0:
                         if maze_matrix.maze_matrix[i][j-1] == 1:
-                            self.maze_segments.append(CreateMazeSegment(self.MARGIN +j*self.MATRIX_CENTERS +  self.WALL_WIDTH - self.WALL_LENGTH, 
+                            self.maze_segments.append(CreateMazeSegment(self.MARGIN +j*self.MATRIX_CENTERS +  self.WALL_WIDTH/2 - self.WALL_LENGTH, 
                                                 self.MARGIN + i*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
-                                                self.WALL_LENGTH, 
+                                                self.WALL_LENGTH + self.WALL_WIDTH, 
                                                 self.WALL_WIDTH))
+                            if self.isolated_direction == 'yes':
+                                self.isolated_direction = 'right'
+                            else:
+                                self.isolated_direction = 'no'
                     if j != maze_matrix.column_length - 1:
                         if maze_matrix.maze_matrix[i][j + 1] == 1:
-                            self.maze_segments.append(CreateMazeSegment(self.MARGIN +j*self.MATRIX_CENTERS +  self.WALL_WIDTH, 
+                            self.maze_segments.append(CreateMazeSegment(self.MARGIN +j*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
                                                 self.MARGIN + i*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
-                                                self.WALL_LENGTH, 
+                                                self.WALL_LENGTH + self.WALL_WIDTH, 
                                                 self.WALL_WIDTH))
+                            if self.isolated_direction == 'yes':
+                                self.isolated_direction = 'left'
+                            else:
+                                self.isolated_direction = 'no'
                     if i != maze_matrix.row_length - 1:
                         if maze_matrix.maze_matrix[i+1][j] == 1:        ##upper wall
                             self.maze_segments.append(CreateMazeSegment(self.MARGIN + j*self.MATRIX_CENTERS + self.WALL_WIDTH/2,
-                                                 self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH, 
+                                                 self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
                                                  self.WALL_WIDTH, 
-                                                 self.WALL_LENGTH))
-        self.character = Character(640/2, 450, 20, 20)
-
+                                                 self.WALL_LENGTH + self.WALL_WIDTH))
+                            if self.isolated_direction == 'yes':
+                                self.isolated_direction = 'up'
+                            else:
+                                self.isolated_direction = 'no'
+                    if self.isolated_direction == 'up':
+                        self.maze_segments.append(CreateMazeSegment(self.MARGIN + j*self.MATRIX_CENTERS + self.WALL_WIDTH/2,
+                                                 self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH/2 - self.WALL_LENGTH, 
+                                                 self.WALL_WIDTH, 
+                                                 self.WALL_LENGTH + self.WALL_WIDTH))
+                    elif self.isolated_direction == 'down':
+                         self.maze_segments.append(CreateMazeSegment(self.MARGIN + j*self.MATRIX_CENTERS + self.WALL_WIDTH/2,
+                                                 self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
+                                                 self.WALL_WIDTH, 
+                                                 self.WALL_LENGTH + self.WALL_WIDTH))
+                    elif self.isolated_direction == 'left':
+                        self.maze_segments.append(CreateMazeSegment(self.MARGIN +j*self.MATRIX_CENTERS +  self.WALL_WIDTH/2 - self.WALL_LENGTH, 
+                                                self.MARGIN + i*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
+                                                self.WALL_LENGTH + self.WALL_WIDTH, 
+                                                self.WALL_WIDTH))
+                    elif self.isolated_direction == 'right':
+                        self.maze_segments.append(CreateMazeSegment(self.MARGIN +j*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
+                                                self.MARGIN + i*self.MATRIX_CENTERS + self.WALL_WIDTH/2, 
+                                                self.WALL_LENGTH + self.WALL_WIDTH, 
+                                                self.WALL_WIDTH))
+                    self.isolated_direction = 'yes'
+        self.maze_rect_list = []
+        #for obj in self.maze_segments:      ##for the objects in maze segments
+        #    self.maze_rect_list.append(obj.rect)    ##the rectangle to a new list
+        self.character = Character(500, 500, 21, 21)    ## create a new character
+        self.collision = Character_Collision_Rect(self.character, 2, self.character.width)    ##and collision rectangles
+        self.fog_of_war = FogOfWar(self.character, self.character.x_pos, self.character.x_pos, 100)
+    def run_model(self):
+        ##we need to run this for the rectangles to update
+        ##update character block
+        self.character.rect = pygame.Rect(self.character.x_pos, self.character.y_pos,
+            self.character.width, self.character.height)
+        #update collision rectangles and detection
+        self.collision.update_collision(self.character, self.maze_rect_list)
+        #update fog of war position
+        self.fog_of_war.update_fog_of_war()
+        
+        self.maze_rect_list = []
+        for obj in self.maze_segments:      ##for the objects in maze segments
+            obj.update_maze()
+            self.maze_rect_list.append(obj.rect)    ##add the rectangle to a new list
+        #self.maze_rect_list = CreateMazeSegment.update_maze(self.maze_segments)
+        #self.maze_rect_list = []
+        #for obj in self.maze_segments:      ##for the objects in maze segments
+        #    self.maze_rect_list.append(obj.rect)    ##the rectangle to a new list
+    def move_maze(self, x_vel, y_vel):
+        for obj in self.maze_segments:
+            obj.x_pos += x_vel
+            obj.y_pos += y_vel
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
         self.model = model
         self.move_ticker = 0
+        self.character = self.model.character  #set attributes of character
+        self.collision = self.model.collision
+
     def handle_event(self, event):
-        left = False
-        keys = pygame.key.get_pressed()
-        #if event.type == pygame.KEYDOWN:
-        """for diagonal movement, check diagonal first"""
-        if keys[pygame.K_a] and keys[pygame.K_w]:
-            if self.move_ticker > self.model.character.refresh_rate + 2:
-                self.move_ticker = 0
-                self.model.character.x_pos -= self.model.character.vel
-                self.model.character.y_pos -= self.model.character.vel
-        elif keys[pygame.K_a] and keys[pygame.K_s]:
-            if self.move_ticker > self.model.character.refresh_rate + 2:
-                self.move_ticker = 0
-                self.model.character.x_pos -= self.model.character.vel
-                self.model.character.y_pos += self.model.character.vel
-        elif keys[pygame.K_d] and keys[pygame.K_w]:
-            if self.move_ticker > self.model.character.refresh_rate + 2:
-                self.move_ticker = 0
-                self.model.character.x_pos += self.model.character.vel
-                self.model.character.y_pos -= self.model.character.vel
-        elif keys[pygame.K_d] and keys[pygame.K_s]:
-            if self.move_ticker > self.model.character.refresh_rate + 2:
-                self.move_ticker = 0
-                self.model.character.x_pos += self.model.character.vel
-                self.model.character.y_pos += self.model.character.vel
-        elif keys[pygame.K_a]: ##for horizontal, vertical movement
-            if self.move_ticker > self.model.character.refresh_rate:
-                self.move_ticker = 0
-                self.model.character.x_pos -= self.model.character.vel
-        elif keys[pygame.K_d]:
-            if self.move_ticker > self.model.character.refresh_rate:
-                self.move_ticker = 0
-                self.model.character.x_pos += self.model.character.vel
-        elif keys[pygame.K_w]:
-            if self.move_ticker > self.model.character.refresh_rate:
-                self.move_ticker = 0
-                self.model.character.y_pos -= self.model.character.vel
-        elif keys[pygame.K_s]:
-            if self.move_ticker > self.model.character.refresh_rate:
-                self.move_ticker = 0
-                self.model.character.y_pos += self.model.character.vel
+        y_vel = 0
+        x_vel = 0
+        keys = pygame.key.get_pressed()     ##find what keys were pressed
+        model.run_model() ## run the model so we can change its attributes
+        if self.move_ticker > self.model.character.refresh_rate:
+            ## change diagonals first
+            if keys[pygame.K_a] and keys[pygame.K_s] and not self.collision.collision_character_bool:
+                x_vel = -self.character.diag_vel
+                y_vel = self.character.diag_vel
+            elif keys[pygame.K_a] and keys[pygame.K_w] and not self.collision.collision_character_bool:
+                x_vel = -self.character.diag_vel
+                y_vel = -self.character.diag_vel
+            elif keys[pygame.K_d] and keys[pygame.K_s] and not self.collision.collision_character_bool:
+                x_vel = self.character.diag_vel
+                y_vel = self.character.diag_vel
+            elif keys[pygame.K_d] and keys[pygame.K_w] and not self.collision.collision_character_bool:
+                x_vel = self.character.diag_vel
+                y_vel = -self.character.diag_vel
+            ##check horizontal/vertical after
+            elif keys[pygame.K_a] and not self.collision.collision_character_bool:
+                x_vel = -self.character.vel
+            elif keys[pygame.K_d] and not self.collision.collision_character_bool:
+                x_vel = self.character.vel
+            elif keys[pygame.K_w] and not self.collision.collision_character_bool:
+                y_vel = -self.character.vel
+            elif keys[pygame.K_s] and not self.collision.collision_character_bool:
+                y_vel = self.character.vel
+            ##if there is a collision, and the key is pressed, the velocity is zero
+            if self.collision.collision_bool_list[0] and keys[pygame.K_a]:
+                x_vel = 0
+            if self.collision.collision_bool_list[1] and keys[pygame.K_d]:
+                x_vel = 0
+            if self.collision.collision_bool_list[2] and keys[pygame.K_w]:
+                y_vel = 0
+            if self.collision.collision_bool_list[3] and keys[pygame.K_s]:
+                y_vel = 0
+            ##for the keys pressed, we can add the velocity to the position
+            if keys[pygame.K_a] or keys[pygame.K_d]:
+                #self.character.x_pos += x_vel
+                self.model.move_maze(-x_vel, 0)
+                #for obj in self.model.maze_segments:
+                #    obj.x_pos -= x_vel
+            if keys[pygame.K_s] or keys[pygame.K_w]:
+                #self.character.y_pos += y_vel
+                self.model.move_maze(0, -y_vel)
+                #for obj in self.model.maze_segments:
+                #    obj.y_pos -= y_vel
+            self.move_ticker = 0
+        ##if original collides, move outwards
+        if self.collision.collision_character_bool:
+            if self.collision.collision_bool_list[0]:
+                self.model.move_maze(-1, 0)
+                #self.character.x_pos += 1
+            if self.collision.collision_bool_list[1]:
+                self.model.move_maze(1, 0)
+                #self.character.x_pos -= 1 
+            if self.collision.collision_bool_list[2]:
+                self.model.move_maze(0, -1)
+                #self.character.y_pos += 1
+            if self.collision.collision_bool_list[3]:
+                self.model.move_maze(0, 1)
+                #self.character.y_pos -= 1
         self.move_ticker += 1
 
 if __name__ == '__main__':
