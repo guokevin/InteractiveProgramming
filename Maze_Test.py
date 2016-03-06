@@ -4,34 +4,10 @@ import random
 import sys
 from os import path
 
-X = 5
-Y = 5
+#X = 5
+#Y = 5
 
 class Grouper(object):
-   """This class provides a lightweight way to group arbitrary objects
-together into disjoint sets when a full-blown graph data structure
-would be overkill.
-
-Objects can be joined using .join(), tested for connectedness
-using .joined(), and all disjoint sets can be retreived using
-.get().
-
-The objects being joined must be hashable.
-
-For example:
-
->>> g = grouper.Grouper()
->>> g.join('a', 'b')
->>> g.join('b', 'c')
->>> g.join('d', 'e')
->>> list(g.get())
-[['a', 'b', 'c'], ['d', 'e']]
->>> g.joined('a', 'b')
-True
->>> g.joined('a', 'c')
-True
->>> g.joined('a', 'd')
-False"""   
    def __init__(self, init=[]):
       mapping = self._mapping = {}
       for x in init:
@@ -92,7 +68,7 @@ def popchoice(seq):
     """
     return seq.pop(random.randrange(len(seq)))
 
-def create_maze():
+def create_maze(X, Y):
     # A mapping of coord tuple to Cell object    
     cells = {}
     # A list of all the non-edge walls
@@ -161,15 +137,32 @@ def create_maze():
 
     # Print the map
     maze = []
-    for row in maze_map:
+    for i in range(len(maze_map)):
+        n = random.randint(0, X)
+        p = random.randint(0, X)
         maze_row = []
-        for element in row:
-            if element:
-                maze_row.append(1)
+        for j in range(len(maze_map[0])):
+            #if(n >= rand_number or j == X or j == 0 or i == 0 or i == Y):
+            if maze_map[i][j] and ((j != n and j!= p) or j == 2*X or j == 0 or i == 0 or i == 2*Y):
+              maze_row.append(1)
             else:
-                maze_row.append(0)
+              maze_row.append(0)
         maze.append(maze_row)
         print maze_row
     return maze
 
-create_maze()
+"""
+maze_matrix_test = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 
+                            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], 
+                            [1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1], 
+                            [1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1], 
+                            [1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1], 
+                            [1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1], 
+                            [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
+                            [1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1], 
+                            [1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1], 
+                            [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1], 
+                            [1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1], 
+                            [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1], 
+                            [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], 
+                            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]"""
