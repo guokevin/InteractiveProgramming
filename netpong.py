@@ -2,6 +2,7 @@
 import pygame
 # import network module
 from PodSixNet.Connection import connection, ConnectionListener
+# from Maze_Escape import *
 from Escape_The_Maze import *
 
 # init pygame
@@ -16,9 +17,9 @@ class Listener(ConnectionListener):
         
         # set the window
         self.screen = pygame.display.set_mode((1000, 1000))
-        self.model = EscapeTheMazeModel()
-        self.view = PygameEscapeTheMazeView(self.model,self.screen)
-        self.controller = PyGameKeyboardController(self.model)
+        #self.model = EscapeTheMazeModel()
+        # self.view = PygameEscapeTheMazeView(self.model,self.screen)
+        #self.controller = PyGameKeyboardController(self.model)
         
         # player number. this can be 0 (left player) or 1 (right player)
         self.num = None
@@ -35,9 +36,10 @@ class Listener(ConnectionListener):
 
         self.x_pos = [0,0]
         self.y_pos = [0,0]
-        # self.move_ticker = 0
-        # self.refresh_rate = 3
-        # self.vel = 5
+        self.move_ticker = 0
+        self.refresh_rate = 1
+        self.vel = 5
+        self.diag_vel = 5/1.41
 
     # function to manage bars movement
     def Network_move(self, data):
@@ -66,98 +68,102 @@ class Listener(ConnectionListener):
             connection.Pump()
             # update the listener
             self.Pump()
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.running = False
-                if event.type == QUIT:
-                    self.running = False
-            self.controller.handle_event(event)
-            self.view.draw()
-            time.sleep(.001)
-            
-
-
             # for event in pygame.event.get():
+            #     if event.type == pygame.KEYDOWN:
+            #         if event.key == pygame.K_ESCAPE:
+            #             self.running = False
             #     if event.type == QUIT:
-            #         running = False
-            #     controller.handle_event(event)
-            #     view.draw()
-            #     time.sleep(.001)
-            # for event in pygame.event.get():
-            #     # end the game in necessary
-            #     if event.type == pygame.QUIT:
-            #         exit(0)
-                # elif self.start:
-                #     if event.type == pygame.KEYDOWN:
-                #         keys = pygame.key.get_pressed()
-                        # if keys[pygame.K_ESCAPE]:
-                            # running = False
-
-                        # if keys[pygame.K_a] and keys[pygame.K_w]:
-                        #     if self.move_ticker > self.refresh_rate + 2:
-                        #         self.move_ticker = 0
-                        #         self.x_pos[self.num] -= self.vel
-                        #         self.y_pos[self.num] -= self.vel
-                        # elif keys[pygame.K_a] and keys[pygame.K_s]:
-                        #     if self.move_ticker > self.refresh_rate + 2:
-                        #         self.move_ticker = 0
-                        #         self.x_pos[self.num] -= self.vel
-                        #         self.y_pos[self.num] += self.vel
-                        # elif keys[pygame.K_d] and keys[pygame.K_w]:
-                        #     if self.move_ticker > self.refresh_rate + 2:
-                        #         self.move_ticker = 0
-                        #         self.x_pos[self.num] += self.vel
-                        #         self.y_pos[self.num] -= self.vel
-                        # elif keys[pygame.K_d] and keys[pygame.K_s]:
-                        #     if self.move_ticker > self.refresh_rate + 2:
-                        #         self.move_ticker = 0
-                        #         self.x_pos[self.num] += self.vel
-                        #         self.y_pos[self.num] += self.vel
-                        # elif keys[pygame.K_a]:
-                        #     if self.move_ticker > self.refresh_rate:
-                        #         self.move_ticker = 0
-                        #         self.x_pos[self.num] -= self.vel
-                        # elif keys[pygame.K_d]:
-                        #     if self.move_ticker > self.refresh_rate:
-                        #         self.move_ticker = 0
-                        #         self.x_pos[self.num] += self.vel
-                        # elif keys[pygame.K_w]:
-                        #     if self.move_ticker > self.refresh_rate:
-                        #         self.move_ticker = 0
-                        #         self.y_pos[self.num] -= self.vel
-                        # elif keys[pygame.K_s]:
-                        #     if self.move_ticker > self.refresh_rate:
-                        #         self.move_ticker = 0
-                        #         self.y_pos[self.num] += self.vel
-                        # self.move_ticker += 1
-                    # elif event.type == pygame.KEYUP:
-                    #     self.x_pos[self.num] = 0
-                    #     self.y_pos[self.num] = 0
-
-            # control user input
-            """for event in pygame.event.get():
+            #         self.running = False
+            # self.controller.handle_event(event)
+            # # self.view.draw()
+            # time.sleep(.001)
+            
+            for event in pygame.event.get():
                 # end the game in necessary
                 if event.type == pygame.QUIT:
                     exit(0)
 
                 # if the game is started
-                elif self.start:
+            if self.start:
+                # control user keyboard input
+                # if event.type == pygame.KEYDOWN:
+                #     if event.unicode == 'a':
+                #         self.x_pos[self.num] = -10
+                #     elif event.unicode == 'd':
+                #         self.x_pos[self.num] = 10
+                #     elif event.unicode == 'w':
+                #         self.y_pos[self.num] = -10
+                #     elif event.unicode == 's':
+                #         self.y_pos[self.num] = 10
                 
-                    # control user keyboard input
-                    if event.type == pygame.KEYDOWN:
-                        if event.unicode == 'a':
-                            self.x_pos[self.num] = -10
-                        elif event.unicode == 'd':
-                            self.x_pos[self.num] = 10
-                        elif event.unicode == 'w':
-                            self.y_pos[self.num] = -10
-                        elif event.unicode == 's':
-                            self.y_pos[self.num] = 10
-                    
-                    elif event.type == pygame.KEYUP:
-                        self.x_pos[self.num] = 0
-                        self.y_pos[self.num] = 0"""
+                # elif event.type == pygame.KEYUP:
+                #     self.x_pos[self.num] = 0
+                #     self.y_pos[self.num] = 0
+                y_vel = 0
+                x_vel = 0
+                keys = pygame.key.get_pressed()     ##find what keys were pressed
+                #self.model.run_model() ## run the model so we can change its attributes
+                if self.move_ticker > self.refresh_rate:
+                    ## change diagonals first
+                    if keys[pygame.K_a] and keys[pygame.K_s]:
+                        x_vel = -self.diag_vel
+                        y_vel = self.diag_vel
+                    elif keys[pygame.K_a] and keys[pygame.K_w]:
+                        x_vel = -self.diag_vel
+                        y_vel = -self.diag_vel
+                    elif keys[pygame.K_d] and keys[pygame.K_s]:
+                        x_vel = self.diag_vel
+                        y_vel = self.diag_vel
+                    elif keys[pygame.K_d] and keys[pygame.K_w]:
+                        x_vel = self.diag_vel
+                        y_vel = -self.diag_vel
+                    ##check horizontal/vertical after
+                    if keys[pygame.K_a]:
+                        x_vel = -self.vel
+                    elif keys[pygame.K_d]:
+                        x_vel = self.vel
+                    elif keys[pygame.K_w]:
+                        y_vel = -self.vel
+                    elif keys[pygame.K_s]:
+                        y_vel = self.vel
+                    ##if there is a collision, and the key is pressed, the velocity is zero
+                    # if self.collision.collision_bool_list[0] and keys[pygame.K_a]:
+                    #     x_vel = 0
+                    # if self.collision.collision_bool_list[1] and keys[pygame.K_d]:
+                    #     x_vel = 0
+                    # if self.collision.collision_bool_list[2] and keys[pygame.K_w]:
+                    #     y_vel = 0
+                    # if self.collision.collision_bool_list[3] and keys[pygame.K_s]:
+                    #     y_vel = 0
+                    ##for the keys pressed, we can add the velocity to the position
+                    if keys[pygame.K_a] or keys[pygame.K_d]:
+                        #self.character.rel_x_pos += x_vel
+                        #self.model.move_objects(-x_vel, 0)
+                        self.players[self.num].x_pos += x_vel
+                    if keys[pygame.K_s] or keys[pygame.K_w]:
+                        #self.character.rel_y_pos += y_vel
+                        #self.model.move_objects(0, -y_vel)
+                        self.players[self.num].y_pos += y_vel
+                    self.move_ticker = 0
+                self.move_ticker += 1
+                    ##if original collides, move outwards
+                    # if self.collision.collision_character_bool:
+                    #     if self.collision.collision_bool_list[0]:
+                    #         #self.model.move_objects(-1, 0)
+                    #         self.character.rel_x_pos += 1
+                    #         self.character.x_pos +=1 
+                    #     if self.collision.collision_bool_list[1]:
+                    #         #self.model.move_objects(1, 0)
+                    #         self.character.rel_x_pos -= 1
+                    #         self.character.x_pos -=1 
+                    #     if self.collision.collision_bool_list[2]:
+                    #         #self.model.move_objects(0, -1)
+                    #         self.character.rel_y_pos += 1
+                    #         self.character.y_pos +=1 
+                    #     if self.collision.collision_bool_list[3]:
+                    #         #self.model.move_objects(0, 1)
+                    #         self.character.rel_y_pos -= 1
+                    #         self.character.y_pos -=1 
 
             
             # clear the screen
