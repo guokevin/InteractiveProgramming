@@ -17,21 +17,31 @@ class PygameEscapeTheMazeView(object):
         """Initialize the view with the specified model"""
         self.model = model
         self.screen = screen
+        self.font1 = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
+        self.font2 = pygame.font.SysFont('sans,freesans,courier,arial', 48, True)
+        self.win = False
+
     def draw(self):
         """Draw the game state to the screen"""
         #draw the maze
         self.screen.fill(pygame.Color('grey'))
         for rect in self.model.lists.maze_segment_rect_list:
             pygame.draw.rect(self.screen, pygame.Color('black'), rect)
+
         for scroll in self.model.lists.scroll_list:
             rect = (scroll.x_pos, scroll.y_pos, scroll.width, scroll.height)
             pygame.draw.rect(self.screen, pygame.Color('gold'), rect)
-        #for maze_segment in self.model.maze_segments:
-        #    rect = pygame.Rect(maze_segment.x_pos, maze_segment.y_pos, maze_segment.width, maze_segment.height)
-        #    pygame.draw.rect(self.screen, pygame.Color('black'), rect)
+
+        pygame.draw.rect(self.screen, pygame.Color('blue'), self.model.exit.rect)
         #draw the maze character
         r = self.model.character.rect
         pygame.draw.rect(self.screen, pygame.Color(self.model.character.color), r)
+
+
+        self.screen.blit(self.font1.render("Scrolls: " + str(self.model.lists.starting_number_of_scrolls- self.model.lists.number_of_scrolls) + "/" + str(self.model.lists.starting_number_of_scrolls), True, (0, 0, 255)), (1100, 20))
+        if self.win or (self.model.lists.number_of_scrolls == 0 and self.model.collision.exit_collision == True):
+            self.win = True
+            self.screen.blit(self.font2.render("YOU WIN!", True, (0, 0, 255)), (500, 500))
         #self.model.fog_of_war.draw_fog_of_war(self.screen)
         #for rect in self.model.lists.collision_rect_list:
         #   pygame.draw.rect(self.screen, pygame.Color('green'), rect)
@@ -52,37 +62,6 @@ class Maze(object):
         self.row_length = len(self.maze_matrix)
         self.column_length = len(self.maze_matrix[0][:])
         #self.maze_segment = Maze_Segment(0, 0, 0, 0)        ##initialize maze_segment, so we can grab attributes later
-
-        ####################################
-        ##GERENATE MAZE SEGMENT RECTANGLES##
-        ####################################
-        ###create rectangles for the maze to draw
-        horizontal_segments = [] ##a list of horizontal attributes for each rectangle
-        for i in range(self.row_length):  ##for each of the rows
-            print self.maze_matrix[i][:]
-        for i in range(self.row_length):  ##for each of the rows
-            length = 0
-            start_index = -1
-            end_index = -1
-            for j in range(self.column_length):      ##for each of the columns
-                if self.maze_matrix[i][j] == 1:
-                    if start_index != -1:
-                        start_index = j
-                    length += 1
-                if start_index != -1 and self.maze_matrix[i][j] == 0:
-                    end_index = j-1
-                if end_index != -1:
-                    horizontal_segments.append(((start_index, end_index), (length)))
-                    length = 0
-                    start_index = -1
-                    end_index = -1
-        print horizontal_segments
-
-
-
-
-
-
 
 class Maze_Segment(object):
     def __init__(self, x_pos, y_pos, width, height):
@@ -148,6 +127,20 @@ class Character(object):
     def update_relative_positions(rel_x_pos, rel_y_pos):
         self.rel_x_pos = rel_x_pos
         self.rel_y_pos = rel_y_pos
+class Exit(object):
+    def __init__(self, width, height, MATRIX_CENTERS, MAZE_LENGTH, MAZE_HEIGHT):
+        self.x_pos = random.randint(1, MAZE_LENGTH - 1)*MATRIX_CENTERS*2 + MATRIX_CENTERS
+        self.y_pos = random.randint(1, MAZE_LENGTH - 1)*MATRIX_CENTERS*2 + MATRIX_CENTERS
+        self.rect = pygame.Rect(0,0,0,0)
+        self.width = width
+        self.height = height
+        self.center = self.update_center()
+
+    def update_center(self):
+        return [self.x_pos - self.width/2, self.y_pos - self.height/2]
+
+    def update_exit_rect(self):
+        self.rect = pygame.Rect(self.x_pos - self.width/2, self.y_pos - self.height/2, self.width, self.height)
 
 class Lists(object):
     def __init__(self, character, maze, collision):
@@ -157,9 +150,10 @@ class Lists(object):
         self.maze = maze
         self.scroll_list = []       ##holds objects of scrolls in a list
         self.scroll_rect_list = []  ##holds rectangles of scrolls in a list
-        self.number_of_scrolls = 10
+        self.number_of_scrolls = 2
+        self.starting_number_of_scrolls = self.number_of_scrolls
         self.create_scroll_list(self.number_of_scrolls)  ##create 4 scrolls, randomly generated
-        self.maze_segment_list = self.maze.maze_segment_list ##create a list of objects for the maze segments
+        self.maze_segment_list = [] ##create a list of objects for the maze segments
         self.maze_segment_rect_list = []    ##create rectangles to go in the list
 
         self.collision_rect_list = []       ##create 4 rectangles to place around the character
@@ -177,15 +171,8 @@ class Lists(object):
         ##GERENATE MAZE SEGMENT RECTANGLES##
         ####################################
         ###create rectangles for the maze to draw
-        """horizontal_segments = [] ##a list of horizontal attributes for each rectangle
         for i in range(self.maze.row_length):  ##for each of the rows
-            print self.maze.maze_matrix
-        for i in range(self.maze.row_length):  ##for each of the rows
-            horizontal_length = 0
-            for j in range(self.maze.column_length):      ##for each of the columns
-                if self.maze.maze_matrix[i][j] == 1
-
-        for i in range(self.maze.row_length):  ##for each of the rows
+            print self.maze.maze_matrix[i][:]
             for j in range(self.maze.column_length):      ##for each of the columns
                 ####four different cases here####
                 if self.maze.maze_matrix[i][j] == 1:
@@ -231,7 +218,7 @@ class Lists(object):
                                 self.maze.isolated_direction = 'no'
                     self.maze.isolated_direction = 'yes'
 
-                    if self.isolated_direction == 'up':
+                    """if self.isolated_direction == 'up':
                         self.maze_segments.append(CreateMazeSegment(self.MARGIN + j*self.MATRIX_CENTERS + self.WALL_WIDTH/2,
                                                  self.MARGIN +i*self.MATRIX_CENTERS + self.WALL_WIDTH/2 - self.WALL_LENGTH, 
                                                  self.WALL_WIDTH, 
@@ -324,6 +311,7 @@ class Collision_Detection(object):
         self.character = character
         self.model = model
         self.char_is_colliding = False
+        self.exit_collision = False
         ##create rectangle list and boolean list
         #def create_collision_rectangle():
     def return_collision_bool(self, rect, rect_list):
@@ -333,6 +321,8 @@ class Collision_Detection(object):
     def update_character_collision(self):
         """"sees if the character collides with the maze"""
         self.char_is_colliding = self.return_collision_bool(self.character.rect, self.model.lists.maze_segment_rect_list)
+    def update_exit_collision(self):
+        self.exit_collision = self.character.rect.colliderect(self.model.exit.rect) == 1
 
 class EscapeTheMazeModel(object):
     def __init__(self):
@@ -340,13 +330,14 @@ class EscapeTheMazeModel(object):
         self.collision = Collision_Detection(self.character, self)
         self.maze = Maze(10, 10)                        ##creates the maze
         self.lists = Lists(self.character, self.maze, self.collision)
-
         self.fog_of_war = FogOfWar(self.character,         ##create fog of war
                                     self.character.x_pos, 
                                     self.character.x_pos, 100)
+        self.exit = Exit(30, 30, self.maze.MATRIX_CENTERS, self.maze.MAZE_LENGTH, self.maze.MAZE_HEIGHT)
     def HUD(self):
         font = pygame.font('sans,freesans,courier,arial', 18, True)
         self.scrolls_collected = font.render("asd")
+
     def run_model(self):
         """runs all the updates so we can update the rectangles"""
         ##update character block
@@ -378,10 +369,16 @@ class EscapeTheMazeModel(object):
             scroll.x_pos += x_vel
             scroll.y_pos += y_vel
 
+    def move_exit(self, x_vel, y_vel):
+        self.exit.x_pos += x_vel
+        self.exit.y_pos += y_vel
+
     def move_objects(self, x_vel, y_vel):
         """moves scroll and maze together"""
         self.move_maze(x_vel, y_vel)
         self.move_scrolls(x_vel, y_vel)
+        self.move_exit(x_vel, y_vel)
+
 
     def update_scrolls(self):
         collision_scroll_index = -1
@@ -401,7 +398,9 @@ class EscapeTheMazeModel(object):
         self.lists.update_collision_rect_list()     ##updates the collision rectangles
         self.lists.update_collision_rect_is_colliding_list()    ##updates the collision booleans
         self.lists.update_scroll_is_colliding_list()            ##updates the scroll collision booleans
+        self.collision.update_exit_collision()
         self.update_scrolls()
+        self.exit.update_exit_rect()
 
     #def update_maze_position(self, x_vel, y_vel)
 class PyGameKeyboardController(object):
@@ -478,7 +477,7 @@ class PyGameKeyboardController(object):
 if __name__ == '__main__':
     pygame.init()
     pygame.font.init()
-    size = (1000, 1000)
+    size = (1250, 1250)
     screen = pygame.display.set_mode(size)
     model = EscapeTheMazeModel()
     view = PygameEscapeTheMazeView(model, screen)

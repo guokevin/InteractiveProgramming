@@ -32,7 +32,7 @@ class PygameEscapeTheMazeView(object):
         r = self.model.character.rect
         pygame.draw.rect(self.screen, pygame.Color(self.model.character.color), r)
         
-        #self.model.fog_of_war.draw_fog_of_war(self.screen)
+        self.model.fog_of_war.draw_fog_of_war(self.screen)
         #for rect in self.model.collision.collision_rect_list:
         #   pygame.draw.rect(self.screen, pygame.Color('green'), rect)
         pygame.display.update()
