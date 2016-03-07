@@ -11,7 +11,6 @@ class PygameBrickBreakerView(object):
         """Initialize the view with the specified model"""
         self.model = model
         self.screen = screen
-
     def draw(self):
         """Draw the game state to the screen"""
         #draw the bricks
@@ -20,11 +19,8 @@ class PygameBrickBreakerView(object):
             r = pygame.Rect(brick.left, brick.top, brick.width, brick.height)
             pygame.draw.rect(self.screen, pygame.Color(brick.color), r)
         #draw the paddle
-        r = pygame.Rect(self.model.paddle.left, 
-                        self.model.paddle.top, 
-                        self.model.paddle.width, 
-                        self.model.paddle.height)
-        pygame.draw.rect(self.screen, pygame.Color('white'), r)
+        paddle_rect = self.model.paddle_rect
+        pygame.draw.rect(self.screen, pygame.Color('white'), paddle_rect)
         pygame.display.update()
 
 
@@ -61,6 +57,10 @@ class BrickBreakerModel(object):
                 self.bricks.append(brick)
 
         self.paddle = Paddle(640/2, 480 - 30, 50, 20)
+        self.paddle_rect = pygame.Rect(self.paddle.left, 
+                        self.paddle.top, 
+                        self.paddle.width, 
+                        self.paddle.height)
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
@@ -70,20 +70,9 @@ class PyGameKeyboardController(object):
         if event.type != KEYDOWN:
             return
         if event.key == pygame.K_LEFT:
-            self.model.paddle.left -= 10
+            self.model.paddle_rect.left -= 10
         if event.key == pygame.K_RIGHT:
-            self.model.paddle.left += 10
-
-class PyGameMouseController(object):
-    def __init__(self, model):
-        self.model = model
-
-    def handle_event(self, event):
-        """ Look for mouse movements and respond appropriately """
-        if event.type != MOUSEMOTION:
-            return
-        self.model.paddle.left = event.pos[0]
-        print event.pos
+            self.model.paddle_rect.left += 10
 
 if __name__ == '__main__':
     pygame.init()
@@ -91,7 +80,7 @@ if __name__ == '__main__':
     screen = pygame.display.set_mode(size)
     model = BrickBreakerModel()
     view = PygameBrickBreakerView(model, screen)
-    controller = PyGameMouseController(model)
+    controller = PyGameKeyboardController(model)
     running = True
     while running:
         for event in pygame.event.get():

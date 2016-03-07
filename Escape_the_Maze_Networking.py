@@ -124,9 +124,11 @@ class Character(object):
         self.vel = 2           #how many pixels it updates
         self.diag_vel = 2/1.4
         self.refresh_rate = 0  #how many loops before it updates the velocity
+        self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
     def update_relative_positions(rel_x_pos, rel_y_pos):
         self.rel_x_pos = rel_x_pos
         self.rel_y_pos = rel_y_pos
+
 class Exit(object):
     def __init__(self, width, height, MATRIX_CENTERS, MAZE_LENGTH, MAZE_HEIGHT):
         self.x_pos = random.randint(1, MAZE_LENGTH - 1)*MATRIX_CENTERS*2 + MATRIX_CENTERS
@@ -334,6 +336,7 @@ class EscapeTheMazeModel(object):
                                     self.character.x_pos, 
                                     self.character.x_pos, 100)
         self.exit = Exit(30, 30, self.maze.MATRIX_CENTERS, self.maze.MAZE_LENGTH, self.maze.MAZE_HEIGHT)
+
     def HUD(self):
         font = pygame.font('sans,freesans,courier,arial', 18, True)
         self.scrolls_collected = font.render("asd")
@@ -341,8 +344,7 @@ class EscapeTheMazeModel(object):
     def run_model(self):
         """runs all the updates so we can update the rectangles"""
         ##update character block
-        self.character.rect = pygame.Rect(self.character.x_pos, self.character.y_pos,
-            self.character.width, self.character.height)
+
         #update collision rectangles and detection
         #update fog of war position
         self.fog_of_war.update_fog_of_war()
@@ -359,26 +361,31 @@ class EscapeTheMazeModel(object):
 
     def move_maze(self, x_vel, y_vel):
         """moves the maze"""
-        for maze_segment in self.lists.maze_segment_list:
+        """for maze_segment in self.lists.maze_segment_list:
             maze_segment.x_pos += x_vel
-            maze_segment.y_pos += y_vel
+            maze_segment.y_pos += y_vel"""
+        pass
 
     def move_scrolls(self, x_vel, y_vel):
         """same as move_maze"""
-        for scroll in self.lists.scroll_list:
+        """for scroll in self.lists.scroll_list:
             scroll.x_pos += x_vel
-            scroll.y_pos += y_vel
+            scroll.y_pos += y_vel"""
+        pass
 
     def move_exit(self, x_vel, y_vel):
-        self.exit.x_pos += x_vel
-        self.exit.y_pos += y_vel
+        """self.exit.x_pos += x_vel
+        self.exit.y_pos += y_vel"""
+        pass
 
     def move_objects(self, x_vel, y_vel):
         """moves scroll and maze together"""
         self.move_maze(x_vel, y_vel)
         self.move_scrolls(x_vel, y_vel)
         self.move_exit(x_vel, y_vel)
-
+    def update_character(self):
+        self.character.rect.left = self.character.x_pos
+        self.character.rect.top = self.character.y_pos
 
     def update_scrolls(self):
         collision_scroll_index = -1
@@ -392,6 +399,7 @@ class EscapeTheMazeModel(object):
 
     def update_entities(self):
         """updates everything"""
+        self.update_character()
         self.collision.update_character_collision() ##changes bool if character collides with maze
         self.lists.update_maze_segment_rect_list()  ##updates the  maze_segment rectangles
         self.lists.update_scroll_rect_list()        ##updates the scroll rectangles
@@ -414,8 +422,7 @@ class PyGameKeyboardController(object):
         y_vel = 0
         x_vel = 0
         keys = pygame.key.get_pressed()     ##find what keys were pressed
-        model.run_model() ## run the model so we can change its attributes
-        if self.move_ticker > self.model.character.refresh_rate:
+        if self.move_ticker >= self.model.character.refresh_rate:
             ## change diagonals first
             if keys[pygame.K_a] and keys[pygame.K_s] and not self.collision.char_is_colliding:
                 x_vel = -self.character.diag_vel
@@ -451,24 +458,30 @@ class PyGameKeyboardController(object):
             if keys[pygame.K_a] or keys[pygame.K_d]:
                 self.character.rel_x_pos += x_vel
                 self.model.move_objects(-x_vel, 0)
+                self.character.x_pos += x_vel
             if keys[pygame.K_s] or keys[pygame.K_w]:
                 self.character.rel_y_pos += y_vel
                 self.model.move_objects(0, -y_vel)
+                self.character.y_pos += y_vel
             self.move_ticker = 0
         ##if original collides, move outwards
         if self.collision.char_is_colliding:
             if self.lists.collision_rect_is_colliding_list[0]:
                 self.model.move_objects(-1, 0)
                 self.character.rel_x_pos += 1
+                self.character.x_pos += 1
             if self.lists.collision_rect_is_colliding_list[1]:
                 self.model.move_objects(1, 0)
                 self.character.rel_x_pos -= 1
+                self.character.x_pos -= 1
             if self.lists.collision_rect_is_colliding_list[2]:
                 self.model.move_objects(0, -1)
                 self.character.rel_y_pos += 1
+                self.character.y_pos += 1
             if self.lists.collision_rect_is_colliding_list[3]:
                 self.model.move_objects(0, 1)
                 self.character.rel_y_pos -= 1
+                self.character.y_pos -= 1
         #self.model.update_maze_position(self.character.rel_x_pos, self.character.rel_y_pos)
         #print "(            " , self.character.rel_x_pos , ", " , self.character.rel_y_pos
         #self.model.character.update_relative_positions()
@@ -484,6 +497,7 @@ if __name__ == '__main__':
     controller = PyGameKeyboardController(model)
     running = True
     while running:
+        model.run_model() ## run the model
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
