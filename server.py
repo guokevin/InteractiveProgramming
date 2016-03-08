@@ -26,27 +26,56 @@ class GenerateMaze(object):
 class EscapeTheMazeServerModel(object):
     def __init__(self):
         self.players = [] ##keep empty
-        self.number_of_characters = 2   
+        self.NUMBER_OF_CHARACTERS = 2 
+        self.NUMBER_OF_SCROLLS = 4
         self.maze = GenerateMaze(10, 10)
         #locations = GenerateCharacterLocations(self)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
+        self.scroll_list = []
         #locations.char_list
         GenerateCharacterLocations(self)
+        GenerateScrollLocations(self)
 
+class GenerateScrollLocations(object):
+    def __init__(self, model):
+        self.model = model
+        self.maze = model.maze
+        self.scroll_added = False
+        while len(self.model.scroll_list) < self.model.NUMBER_OF_SCROLLS:
+            x = random.randint(1, self.maze.MAZE_LENGTH - 1)
+            x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+            y = random.randint(1, self.maze.MAZE_HEIGHT - 1)
+            y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+            scroll_entity = [x_pos, y_pos]
+            for char in self.model.char_list:
+                print len(self.model.char_list)
+                if not(x_pos == char[0] and y_pos == char[1]):
+                    if len(self.model.scroll_list) == 0 and not self.scroll_added:
+                        self.model.scroll_list.append(scroll_entity)
+                        self.scroll_added = True
+                    else:
+                        for scroll in self.model.scroll_list:
+                                if not(x_pos == scroll[0] and y_pos == scroll[1]) and not self.scroll_added:
+                                    self.model.scroll_list.append(scroll_entity)
+                                    self.scroll_added = True
+
+            self.scroll_added = False
+
+        for scroll in self.model.scroll_list:
+            print scroll[0], ' , ', scroll[1]
 
 class GenerateCharacterLocations(object):
     def __init__(self, model):
         self.model = model
         self.maze = model.maze
-        for i in range(self.model.number_of_characters):
+        for i in range(self.model.NUMBER_OF_CHARACTERS):
             x = random.randint(1, self.maze.MAZE_LENGTH - 1)
             x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             y = random.randint(1, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
-            char_entity = [x_pos, y_pos, 20, 20]
+            char_entity = [x_pos, y_pos]
             self.model.char_list.append(char_entity)
-            print char_entity
             char = Character(x_pos, y_pos, 20, 20)
             self.model.char.append(char)
 class Character(object):
@@ -54,8 +83,6 @@ class Character(object):
     def __init__(self, x_pos, y_pos, width, height):
         self.x_pos = x_pos
         self.y_pos = y_pos
-        self.rel_x_pos = x_pos
-        self.rel_y_pos = y_pos
         self.width = width
         self.height = height
         self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
@@ -108,12 +135,13 @@ class MyServer(Server):
         #player.Char = self.characters[len(self.players)-1]
         # send to the player his number
         player.Send({'action': 'number', 'num': len(self.model.players)-1})
+        #print len(self.model.players) -1
         player.Send({'action': 'generate_maze', 'maze_matrix' : self.model.maze.maze_matrix})
-        player.Send({'action': 'generate_players', 'char_list' : self.model.char_list})
+        player.Send({'action': 'initialize_entities', 'char_list' : self.model.char_list, 'scroll_list' : self.model.scroll_list})
         # if there are two player we can start the game
-        print len(self.model.players)
-        print self.model.number_of_characters
-        if len(self.model.players) == 2: #self.model.number_of_characters:
+        #print len(self.model.players)
+        #print self.model.number_of_characters
+        if len(self.model.players) == self.model.NUMBER_OF_CHARACTERS:
             # send to all players the ready message
             self.SendToAll({'action': 'ready'}) 
             # wait 4 seconds before starting the game

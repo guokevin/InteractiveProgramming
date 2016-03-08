@@ -33,7 +33,11 @@ class PygameEscapeTheMazeView(object):
             for rect in self.model.lists.maze_segment_rect_list:
                 pygame.draw.rect(self.screen, pygame.Color('black'), rect)
             #print len(self.model.lists.maze_segment_rect_list)
-            ##create the character rectangles
+            ##draw the scrolls
+            for rect in self.model.lists.scroll_rect_list:
+                #rect = (scroll.x_pos, scroll.y_pos, scroll.width, scroll.height)
+                pygame.draw.rect(self.screen, pygame.Color('gold'), rect)
+            ##draw the character rectangles                
             for char in self.model.players:
                 pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
 
@@ -65,13 +69,21 @@ class Maze_Segment(object):
         self.y_pos = y_pos
         self.width = width
         self.height = height
-class Character(object):
-    """represents the character"""
+
+class Scroll(object):
     def __init__(self, x_pos, y_pos, width, height):
         self.x_pos = x_pos
         self.y_pos = y_pos
-        self.rel_x_pos = x_pos
-        self.rel_y_pos = y_pos
+        self.width = width
+        self.height = height
+
+class Character(object):
+    """represents the character"""
+    def __init__(self, x_pos, y_pos, rel_x_vel, rel_y_vel, width, height):
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+        self.rel_x_pos = rel_x_vel
+        self.rel_y_pos = rel_y_vel
         self.width = width
         self.height = height
         self.color = "red"
@@ -91,6 +103,10 @@ class Lists():
         self.maze_segment_rect_list = []    ##create rectangles to go in the list
         self.collision_rect_list = [0,0,0,0]       ##create 4 rectangles to place around the character
         self.collision_rect_is_colliding_list = [False, False, False, False]  ##create 4 bools to see if the rectangles colide with the maze
+        self.scroll_is_colliding_list = [0,0,0,0]
+        self.scroll_rect_list = []
+        self.number_of_scrolls = 0
+        self.scroll_list = []
         ####################################
         ##GERENATE MAZE SEGMENT RECTANGLES##
         ####################################
@@ -176,6 +192,14 @@ class Lists():
                                                     collision_rect.height,
                                                     collision_rect.width)
 
+    def update_scroll_rect_list(self):
+        """updates the scroll rectangles into a list"""
+        self.number_of_scrolls = len(self.scroll_list)
+        self.scroll_rect_list = []
+        ## for each obj in scroll_list, create a new list of the rectangles
+        for scroll in self.scroll_list:
+            self.scroll_rect_list.append(pygame.Rect(scroll.x_pos, scroll.y_pos, scroll.width, scroll.height))
+
     def update_collision_rect_is_colliding_list(self):
         """updates the booleans in the collision list"""
         #self.char_rect_is_colliding_list = []
@@ -183,6 +207,10 @@ class Lists():
             self.collision_rect_is_colliding_list[i] = self.collision.return_collision_bool(collision_rect, 
                                                                                             self.maze_segment_rect_list)
 
+    def update_scroll_is_colliding_list(self):
+        """updates the booleans for the scrolls into a list"""
+        for i in range(len(self.scroll_rect_list)):
+            self.scroll_is_colliding_list[i] = (1 == self.character.rect.colliderect(self.scroll_rect_list[i]))
 
 
 class CollisionRectangle(object):
@@ -221,6 +249,9 @@ class EscapeTheMazeClientModel(object):
         self.player_num = 0
         self.maze = Maze()
         self.lists = None ##initiate lists object
+        self.char_list = None
+        self.scroll_entity_list = []
+        self.scroll_collision_index = -1
     def run_model(self):
         self.update_entities()
 
@@ -236,20 +267,162 @@ class EscapeTheMazeClientModel(object):
         self.update_characters()
         self.lists.update_collision_rect_list()
         self.lists.update_collision_rect_is_colliding_list()
+        self.lists.update_scroll_rect_list()
+        self.lists.update_scroll_is_colliding_list()
+        self.update_scrolls()
 
+    def update_scrolls(self):
+        if self.collision.return_collision_bool(self.players[self.player_num].rect, self.lists.scroll_rect_list):
+            for i in range(self.lists.number_of_scrolls):
+                if self.lists.scroll_is_colliding_list[i]:
+                    self.scroll_collision_index = i
+        if self.scroll_collision_index != -1:
+            self.lists.scroll_list.pop(self.scroll_collision_index)
+            self.scroll_collision_index = -1
+        #print len(self.lists.scroll_list)
     def move_maze(self, x_vel, y_vel):
         """moves the maze"""
         for maze_segment in self.lists.maze_segment_list:
             maze_segment.x_pos += x_vel
             maze_segment.y_pos += y_vel
+    def move_scrolls(self, x_vel, y_vel):
+        for scroll in self.lists.scroll_list:
+            scroll.x_pos += x_vel
+            scroll.y_pos += y_vel
 
     def move_objects(self, x_vel, y_vel):
         """moves scroll and maze together"""
         self.move_maze(x_vel, y_vel)
-    def create_players(self, char_list):
-        for char_entity in char_list:
+        self.move_scrolls(x_vel, y_vel)
+
+    def edit_maze_position(self):      ##this is run once on initilization
+        for maze_segment in self.lists.maze_segment_list:
+            maze_segment.x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
+            maze_segment.y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+
+    def create_players(self):
+        for char_entity in self.char_list:
             ##create a new character in players for each entity in char_list
-            self.players.append(Character(char_entity[0], char_entity[1], char_entity[2], char_entity[3]))  ##turns character entities into a Character to add to player
+            self.players.append(Character(self.WINDOW_WIDTH/2, 
+                                self.WINDOW_HEIGHT/2, 
+                                char_entity[0], 
+                                char_entity[1], 
+                                20, 
+                                20))  ##turns character entities into a Character to add to player
+
+    def create_scrolls(self, scroll_entity_list):
+        for scroll_entity in scroll_entity_list:
+            ##create a new scroll in scroll_list for each entity in the list
+            self.lists.scroll_list.append(Scroll(scroll_entity[0], scroll_entity[1], 7, 20))  ##adds a scroll into scroll_list, with width 7, height 20
+        self.lists.number_of_scrolls = len(self.lists.scroll_list)
+
+    def edit_scroll_position(self):
+        for scroll in self.lists.scroll_list:
+            scroll.x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
+            scroll.y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+
+# class for I/O on network
+# this represent the player, too
+class Listener(ConnectionListener): 
+    # init the player
+    def __init__(self, model, host, port):
+        self.Connect((host, port))
+        self.model = model
+        self.ran_initiations = False
+        # set the window
+        #self.model = EscapeTheMazeModel()
+        # self.view = PygameEscapeTheMazeView(self.model,self.screen)
+        #self.controller = PyGameKeyboardController(self.model)
+        
+        # player number. this can be 0 (left player) or 1 (right player)
+        #self.num = None
+        # players' rects
+       # self.players = (Character(640/2 + 20, 450, 20, 20),Character(640/2 - 20, 450, 20, 20))
+
+        # True if the server sended the ready message
+        self.ready = False
+        # True if the game is working
+        self.start = False
+        self.running = True
+        # font for writing the scores
+        self.font = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
+
+        #self.x_pos = [0,0]
+        #self.y_pos = [0,0]
+    # function to manage character movement
+    def Network_move(self, data):
+        if data['player_number'] != self.model.player_num:
+            self.model.players[data['player_number']].x_pos = 550 - self.model.players[self.model.player_num].rel_x_pos + data['rel_x_pos']
+            self.model.players[data['player_number']].y_pos = 550 - self.model.players[self.model.player_num].rel_y_pos + data['rel_y_pos']
+            self.model.scroll_collision_index = data['scroll_collision_index']
+    def Network_generate_maze(self, data):
+        self.model.maze.maze_matrix = data['maze_matrix']
+        self.model.maze.row_length = len(self.model.maze.maze_matrix)
+        #print self.model.maze.row_length
+        self.model.maze.column_length = len(self.model.maze.maze_matrix[0][:])
+        #print self.model.maze.column_length
+
+    # get the player number
+    def Network_number(self, data):
+        self.model.player_num = data['num']
+        #print data['num']
+    def Network_initialize_entities(self, data):
+        #self.model.test = data['char_list']
+        self.model.char_list = data['char_list']
+        self.model.scroll_entity_list = data['scroll_list']
+        self.model.create_players()
+
+    # if the game is ready
+    def Network_ready(self, data):
+        self.ready = not self.ready
+
+    # start the game
+    def Network_start(self, data):
+        self.ready = False
+        self.start = True
+    
+    # mainloop
+    def update_listener(self):
+        if self.running:
+            # update connection
+            connection.Pump()
+            # update the listener
+            self.Pump()
+            if self.start:
+                if not self.ran_initiations:
+                    print 'before lists'
+                    #print self.model.player_number
+                    self.model.collision = CollisionDetection(self.model.players[self.model.player_num], self.model)
+                    self.model.lists = Lists(self.model.players[self.model.player_num], self.model.collision, self.model.maze)
+                    self.model.create_scrolls(self.model.scroll_entity_list)
+                    self.model.edit_maze_position()
+                    self.model.edit_scroll_position()
+                    self.ran_initiations = True
+                # send to the server information about movement
+                connection.Send({'action': 'move', 
+                                'player_number': self.model.player_num, 
+                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
+                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos,
+                                'scroll_collision_index' : self.model.scroll_collision_index})
+
+                
+            #print self.model.maze.maze_matrix
+            # # if self.ready is True
+            # if self.ready:
+            #   # write some text
+            #   self.screen.blit(self.font.render('Ready', True, (0, 0, 255)), (400-self.font.size('Ready')[0]/2, 290))
+            #   # update the screen
+            #   pygame.display.flip()
+            # # print 'Waiting for players...'
+            # elif not self.start:
+            #   # write some text
+            #   self.screen.blit(self.font.render('Waiting for players...', True, (255, 255, 255)), (400-self.font.size('Waiting for players...')[0]/2, 290))
+            #   # update the screen
+            #   pygame.display.flip()
+    
+            # wait 25 milliseconds
+            #pygame.time.wait(1)
+
 class PyGameKeyboardController(object):
     def __init__(self, model):
         self.model = model
@@ -328,104 +501,6 @@ class PyGameKeyboardController(object):
                 #self.model.players[self.model.player_num].y_pos -= 1
         #self.model.players[self.model.player_num].update_relative_positions(rel_x_pos, rel_y_pos)
         self.move_ticker += 1
-
-
-# class for I/O on network
-# this represent the player, too
-class Listener(ConnectionListener): 
-    # init the player
-    def __init__(self, model, host, port):
-        self.Connect((host, port))
-        self.model = model
-        self.ran_initiations = False
-        # set the window
-        #self.model = EscapeTheMazeModel()
-        # self.view = PygameEscapeTheMazeView(self.model,self.screen)
-        #self.controller = PyGameKeyboardController(self.model)
-        
-        # player number. this can be 0 (left player) or 1 (right player)
-        #self.num = None
-        # players' rects
-       # self.players = (Character(640/2 + 20, 450, 20, 20),Character(640/2 - 20, 450, 20, 20))
-
-        # True if the server sended the ready message
-        self.ready = False
-        # True if the game is working
-        self.start = False
-        self.running = True
-        # font for writing the scores
-        self.font = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
-
-        #self.x_pos = [0,0]
-        #self.y_pos = [0,0]
-    # function to manage character movement
-    def Network_move(self, data):
-        if data['player_number'] != self.model.player_num:
-            self.model.players[data['player_number']].x_pos = self.model.players[self.model.player_num].x_pos -self.model.players[self.model.player_num].rel_x_pos + data['rel_x_pos']
-            self.model.players[data['player_number']].y_pos = self.model.players[self.model.player_num].y_pos -self.model.players[self.model.player_num].rel_y_pos + data['rel_y_pos']
-    def Network_generate_maze(self, data):
-        self.model.maze.maze_matrix = data['maze_matrix']
-        self.model.maze.row_length = len(self.model.maze.maze_matrix)
-        #print self.model.maze.row_length
-        self.model.maze.column_length = len(self.model.maze.maze_matrix[0][:])
-        #print self.model.maze.column_length
-
-    # get the player number
-    def Network_number(self, data):
-        self.model.player_num = data['num']
-        #print data['num']
-
-    def Network_generate_players(self, data):
-        #self.model.test = data['char_list']
-        self.model.create_players(data['char_list'])
-
-    # if the game is ready
-    def Network_ready(self, data):
-        self.ready = not self.ready
-
-    # start the game
-    def Network_start(self, data):
-        self.ready = False
-        self.start = True
-    
-    # mainloop
-    def update_listener(self):
-        if self.running:
-            # update connection
-            connection.Pump()
-            # update the listener
-            self.Pump()
-            if self.start:
-                if not self.ran_initiations:
-                    print 'before lists'
-                    print self.model.players[1]
-                    self.model.collision = CollisionDetection(self.model.players[self.model.player_num], self.model)
-                    self.model.lists = Lists(self.model.players[self.model.player_num], self.model.collision, self.model.maze)
-                    self.ran_initiations = True
-                # send to the server information about movement
-                print len(self.model.players)
-                connection.Send({'action': 'move', 
-                                'player_number': self.model.player_num, 
-                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
-
-                
-            #print self.model.maze.maze_matrix
-            # # if self.ready is True
-            # if self.ready:
-            #   # write some text
-            #   self.screen.blit(self.font.render('Ready', True, (0, 0, 255)), (400-self.font.size('Ready')[0]/2, 290))
-            #   # update the screen
-            #   pygame.display.flip()
-            # # print 'Waiting for players...'
-            # elif not self.start:
-            #   # write some text
-            #   self.screen.blit(self.font.render('Waiting for players...', True, (255, 255, 255)), (400-self.font.size('Waiting for players...')[0]/2, 290))
-            #   # update the screen
-            #   pygame.display.flip()
-    
-            # wait 25 milliseconds
-            #pygame.time.wait(1)
 
 if __name__ == '__main__':
     pygame.init()
