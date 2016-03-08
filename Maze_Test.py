@@ -148,7 +148,7 @@ def create_maze(X, Y):
             else:
               maze_row.append(0)
         maze.append(maze_row)
-        print maze_row
+        #print maze_row
     return maze
 
 """

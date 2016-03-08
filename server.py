@@ -8,20 +8,39 @@ from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
 # random module to randomize the initial ball direction
 from random import randint
+from Maze_Test import create_maze
 #from Escape_the_Maze_backup import *
 
 # function which return a random value between -1 and -3
 # or between 1 and 3
 # this in userful for set the initial ball direction
 
+class GenerateMaze(object):
+    def __init__(self, MAZE_LENGTH, MAZE_HEIGHT):
+        self.MAZE_LENGTH = MAZE_LENGTH
+        self.MAZE_HEIGHT = MAZE_HEIGHT
+        self.MATRIX_CENTERS = 53
+        self.maze_matrix = create_maze(self.MAZE_LENGTH, self.MAZE_HEIGHT)
 
-
-
-class EscapeTheMazeModel(object):
+class EscapeTheMazeServerModel(object):
     def __init__(self):
         self.players = []
-        self.char = (Character(640/2 + 20, 450, 20, 20),Character(640/2 - 20, 450, 20, 20))
-        
+        self.maze = GenerateMaze(10, 10)
+        locations = GenerateCharacter_Locations(self.maze)
+        self.char = locations.char_list
+
+
+class GenerateCharacterLocations(object):
+    def __init__(self, model):
+        self.maze = model.maze
+        self.char_list = []
+        for i in range(number_of_characters):
+            x = random.randint(1, self.maze.MAZE_LENGTH - 1)
+            x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+            y = random.randint(1, self.maze.MAZE_HEIGHT - 1)
+            y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+            char = Character(x_pos, y_pos, 20, 20)
+            self.char_list.append(char)
 class Character(object):
     """represents the character"""
     def __init__(self, x_pos, y_pos, width, height):
@@ -35,9 +54,6 @@ class Character(object):
         self.VEL = 2           #how many pixels it updates
         self.DIAG_VEL = 2/1.4
         self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
-    def update_relative_positions(rel_x_pos, rel_y_pos):
-        self.rel_x_pos = rel_x_pos
-        self.rel_y_pos = rel_y_pos
 
 # class representing a sigle connection with a client
 # this can also represent a player
@@ -49,8 +65,8 @@ class ClientChannel(Channel):
     
     # function called when a player begin a movement
     def Network_move(self, data):
-        self.char.x_pos = data['x']
-        self.char.y_pos = data['y']
+        self.char.x_pos = data['rel_x_pos']
+        self.char.y_pos = data['rel_y_pos']
         # send to all other clients the information about moving
         self._server.SendToAll(data)
 
@@ -87,10 +103,11 @@ class MyServer(Server):
         #player.Char = self.characters[len(self.players)-1]
         # send to the player his number
         player.Send({'action': 'number', 'num': len(self.model.players)-1})       
+        player.Send({'action': 'generate_maze', 'maze_matrix' : self.model.maze.maze_matrix})
         # if there are two player we can start the game
         if len(self.model.players) == 2:
             # send to all players the ready message
-            self.SendToAll({'action': 'ready'})
+            self.SendToAll({'action': 'ready'}) 
             # wait 4 seconds before starting the game
             self.wait_to_start = 300
     
@@ -125,10 +142,10 @@ print 'Empty for localhost'
 
 # control if address is empty
 #if address == '':
-#    address = 'localhost'
-address = '10.7.64.56'
+address = 'localhost'
+#address = '10.7.24.168'
 # inizialize the server
-model = EscapeTheMazeModel()
+model = EscapeTheMazeServerModel()
 myserver = MyServer(model, localaddr=(address, 31500))
 # start mainloop
 myserver.Loop()
