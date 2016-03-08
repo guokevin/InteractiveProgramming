@@ -22,22 +22,15 @@ class PygameEscapeTheMazeView(object):
         self.win = False
 
     def draw(self):
-        if not self.listener.start:
-            # self.model.player
-            self.screen.blit(self.font1.render('Waiting for players...', True, (255, 255, 255)), (460, 500))
-            # update the screen
-            pygame.display.flip()
         if self.listener.start:
-            ## if the actual game has started
-            ##background is grey
+            ## if the actual game has started background is grey
             self.screen.fill(pygame.Color('grey'))
             ##create the mazes for the rectangle
-
             for rect in self.model.lists.maze_segment_rect_list:
                 pygame.draw.rect(self.screen, pygame.Color('black'), rect)
-            #print len(self.model.lists.maze_segment_rect_list)
-            ##create the character rectangles
 
+
+            ##create the character rectangles
             for i in range(len(self.model.players)):
                 if self.model.still_alive[self.model.player_num]:
                     if self.model.still_alive[i]:
@@ -45,13 +38,20 @@ class PygameEscapeTheMazeView(object):
                         pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
                 else:
                     self.screen.fill((255,0,0))
+                    self.screen.blit(self.font2.render("You Died", True, (0,0,0)), (460, 500))
+
+            if self.model.monster_num == self.model.player_num:
+                self.screen.blit(self.font1.render("Monster", True, (0,0,0)), (460, 20))
 
             self.model.check_game()
-
             pygame.display.update()
+
         else:
-            ##the screen is filled with crap
-            self.screen.fill((0, 0, 0))
+            print self.model.connected_players
+            pygame.draw.rect(self.screen, pygame.Color('red'), (50,50,50,50))
+            self.screen.blit(self.font1.render('Waiting for players...', True, (0, 0, 255)), (460, 500))
+            pygame.display.update()
+
 
 class Maze(object):
     def __init__(self):
@@ -224,7 +224,7 @@ class EscapeTheMazeClientModel(object):
     def __init__(self):
         self.WINDOW_WIDTH = 1100
         self.WINDOW_HEIGHT = 1100
-        self.players = (Character(550, 550, 20, 20), Character(550, 850, 20, 20))
+        self.players = (Character(550, 550, 20, 20), Character(550, 650, 20, 20))
         self.collision = None
         self.player_num = 0
         self.maze = Maze()
@@ -232,6 +232,7 @@ class EscapeTheMazeClientModel(object):
         self.monster_num = None
         self.monster = None
         self.still_alive = [True, True]
+        self.connected_players = 0
 
     def run_model(self):
         self.update_entities()
@@ -272,9 +273,6 @@ class EscapeTheMazeClientModel(object):
         if alive_players == 1:
             print "Game Over"
             # end_game()
-            # pass
-
-
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
@@ -375,8 +373,6 @@ class Listener(ConnectionListener):
         # font for writing the scores
         self.font = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
 
-        #self.x_pos = [0,0]
-        #self.y_pos = [0,0]
     # function to manage character movement
     def Network_move(self, data):
         if data['player_number'] != self.model.player_num:
@@ -408,7 +404,6 @@ class Listener(ConnectionListener):
                                                                             self.model.players[i].y_pos,
                                                                             self.model.players[i].width,
                                                                             self.model.players[i].height)
-                # self.model.monster_num = i
 
     # get the player number
     def Network_number(self, data):
@@ -418,6 +413,9 @@ class Listener(ConnectionListener):
     def Network_monster_number(self,data):
         self.model.monster_num = data['monster_num']
     
+    def Network_ready_players(self, data):
+        self.model.connected_players = data['connected_players']
+
     # if the game is ready
     def Network_ready(self, data):
         self.ready = not self.ready
@@ -430,6 +428,7 @@ class Listener(ConnectionListener):
     # mainloop
     def update_listener(self):
         if self.running:
+            # print 'a'
             # update connection
             connection.Pump()
             # update the listener
@@ -446,10 +445,9 @@ class Listener(ConnectionListener):
                                 'player_number': self.model.player_num, 
                                 'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
                                 'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
-                # print self.model.still_alive
                 connection.Send({'action': 'alive', 'player_number': self.model.player_num,
                                 'still_alive': self.model.still_alive[self.model.player_num]})
-                # print self.model.still_alive[self.model.player_num]
+
 
 if __name__ == '__main__':
     pygame.init()
@@ -469,6 +467,8 @@ if __name__ == '__main__':
     controller = PyGameKeyboardController(model)
     listener = Listener(model, server, 31500)
     view = PygameEscapeTheMazeView(model, screen, listener)
+    font = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
+
     running = True
     while running:
         listener.update_listener()
@@ -478,7 +478,19 @@ if __name__ == '__main__':
                     running = False
             if event.type == QUIT:
                 running = False
+
         if listener.start:
             model.run_model() ## run the model
             controller.handle_event(event)
-            view.draw()
+        view.draw()
+        """else:
+            view.draw_lobby()"""
+
+"""
+for i in range(len(scroll_list),55):
+    scroll_counter.append(pygame.Rect(10,10+i,50,50))
+
+in draw:
+for rect in scroll_counter:
+    PyGame
+"""

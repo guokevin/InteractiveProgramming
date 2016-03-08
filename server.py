@@ -29,8 +29,9 @@ class EscapeTheMazeServerModel(object):
         self.number_of_characters = 2   
         self.maze = GenerateMaze(10, 10)
         #locations = GenerateCharacterLocations(self)
-        self.char = (Character(550, 550, 20, 20), Character(550, 550, 20, 20))
+        self.char = (Character(550, 550, 20, 20), Character(550, 580, 20, 20))
         self.still_alive = [True, True]
+        self.connected_players = 0
         #locations.char_list
 
 """
@@ -109,6 +110,8 @@ class MyServer(Server):
         # add player to the list
         self.model.players.append(player)
         # set the bar rect of the player
+        self.model.connected_players = len(self.model.players)
+        # print self.model.connected_players
         player.char = self.model.char[len(self.model.players)-1]      ##add player.char to players[]
         player.still_alive = self.model.still_alive
         # send to the player his number
@@ -116,9 +119,8 @@ class MyServer(Server):
         player.Send({'action': 'monster_number', 'monster_num': self.monster})
         player.Send({'action': 'is_monster', 'monster': self.monster_list})  
         player.Send({'action': 'generate_maze', 'maze_matrix' : self.model.maze.maze_matrix})
-        # if there are two player we can start the game
-        print len(self.model.players)
-        print self.model.number_of_characters
+
+        self.SendToAll({'action': 'ready_players', 'connected_players': self.model.connected_players})
         if len(self.model.players) == 2: #self.model.number_of_characters:
             # send to all players the ready message
             self.SendToAll({'action': 'monster_list'})
