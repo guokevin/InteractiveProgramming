@@ -29,14 +29,17 @@ class PygameEscapeTheMazeView(object):
             ##background is grey
             self.screen.fill(pygame.Color('grey'))
             ##create the mazes for the rectangle
-
             for rect in self.model.lists.maze_segment_rect_list:
                 pygame.draw.rect(self.screen, pygame.Color('black'), rect)
             #print len(self.model.lists.maze_segment_rect_list)
             ##draw the scrolls
-            for rect in self.model.lists.scroll_rect_list:
-                #rect = (scroll.x_pos, scroll.y_pos, scroll.width, scroll.height)
-                pygame.draw.rect(self.screen, pygame.Color('gold'), rect)
+            #print self.model.lists.number_of_scrolls
+            #print len(self.model.lists.scroll_is_visible)
+            if listener.start:
+                for i, rect in enumerate(self.model.lists.scroll_rect_list):
+                    #rect = (scroll.x_pos, scroll.y_pos, scroll.width, scroll.height)
+                    if self.model.scroll_is_visible[i]:
+                        pygame.draw.rect(self.screen, pygame.Color('gold'), rect)
             ##draw the character rectangles                
             for char in self.model.players:
                 pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
@@ -71,11 +74,12 @@ class Maze_Segment(object):
         self.height = height
 
 class Scroll(object):
-    def __init__(self, x_pos, y_pos, width, height):
+    def __init__(self, x_pos, y_pos, width, height, is_visible):
         self.x_pos = x_pos
         self.y_pos = y_pos
         self.width = width
         self.height = height
+        self.is_visible = is_visible
 
 class Character(object):
     """represents the character"""
@@ -105,6 +109,7 @@ class Lists():
         self.collision_rect_is_colliding_list = [False, False, False, False]  ##create 4 bools to see if the rectangles colide with the maze
         self.scroll_is_colliding_list = [0,0,0,0]
         self.scroll_rect_list = []
+        #self.scroll_is_visible = [True, True]
         self.number_of_scrolls = 0
         self.scroll_list = []
         ####################################
@@ -194,7 +199,6 @@ class Lists():
 
     def update_scroll_rect_list(self):
         """updates the scroll rectangles into a list"""
-        self.number_of_scrolls = len(self.scroll_list)
         self.scroll_rect_list = []
         ## for each obj in scroll_list, create a new list of the rectangles
         for scroll in self.scroll_list:
@@ -206,12 +210,6 @@ class Lists():
         for i, collision_rect in enumerate(self.collision_rect_list):
             self.collision_rect_is_colliding_list[i] = self.collision.return_collision_bool(collision_rect, 
                                                                                             self.maze_segment_rect_list)
-
-    def update_scroll_is_colliding_list(self):
-        """updates the booleans for the scrolls into a list"""
-        for i in range(len(self.scroll_rect_list)):
-            self.scroll_is_colliding_list[i] = (1 == self.character.rect.colliderect(self.scroll_rect_list[i]))
-
 
 class CollisionRectangle(object):
     """defines the collision rectangle"""
@@ -251,10 +249,11 @@ class EscapeTheMazeClientModel(object):
         self.lists = None ##initiate lists object
         self.char_list = None
         self.scroll_entity_list = []
+        self.scroll_is_visible = []
         self.scroll_collision_index = -1
+        self.scroll_removed = True
     def run_model(self):
         self.update_entities()
-
 
     def update_characters(self):
         for char in self.players:
@@ -262,24 +261,27 @@ class EscapeTheMazeClientModel(object):
             char.rect.top = char.y_pos
 
     def update_entities(self):
+        self.update_scrolls()
+        self.lists.update_scroll_rect_list()
         self.collision.update_character_collision()
         self.lists.update_maze_segment_rect_list()
         self.update_characters()
         self.lists.update_collision_rect_list()
         self.lists.update_collision_rect_is_colliding_list()
-        self.lists.update_scroll_rect_list()
-        self.lists.update_scroll_is_colliding_list()
-        self.update_scrolls()
+        #self.lists.update_scroll_is_colliding_list()
+
 
     def update_scrolls(self):
-        if self.collision.return_collision_bool(self.players[self.player_num].rect, self.lists.scroll_rect_list):
-            for i in range(self.lists.number_of_scrolls):
-                if self.lists.scroll_is_colliding_list[i]:
-                    self.scroll_collision_index = i
+        for char in self.players:
+            self.scroll_collision_index = char.rect.collidelist(self.lists.scroll_rect_list)
         if self.scroll_collision_index != -1:
-            self.lists.scroll_list.pop(self.scroll_collision_index)
-            self.scroll_collision_index = -1
-        #print len(self.lists.scroll_list)
+            self.scroll_is_visible[self.scroll_collision_index] = False
+        number_of_scrolls = 0
+        for boolean in self.scroll_is_visible:
+            number_of_scrolls += 1
+        self.lists.number_of_scrolls = number_of_scrolls
+
+
     def move_maze(self, x_vel, y_vel):
         """moves the maze"""
         for maze_segment in self.lists.maze_segment_list:
@@ -313,8 +315,14 @@ class EscapeTheMazeClientModel(object):
     def create_scrolls(self, scroll_entity_list):
         for scroll_entity in scroll_entity_list:
             ##create a new scroll in scroll_list for each entity in the list
-            self.lists.scroll_list.append(Scroll(scroll_entity[0], scroll_entity[1], 7, 20))  ##adds a scroll into scroll_list, with width 7, height 20
+            self.lists.scroll_list.append(Scroll(scroll_entity[0], scroll_entity[1], 7, 20, True))  ##adds a scroll into scroll_list, with width 7, height 20
         self.lists.number_of_scrolls = len(self.lists.scroll_list)
+
+    def create_scroll_is_visible(self):
+        self.scroll_is_visible = []
+        for i in range(self.lists.number_of_scrolls):
+            self.scroll_is_visible.append(True)
+        #print len(self.lists.scroll_is_visible)
 
     def edit_scroll_position(self):
         for scroll in self.lists.scroll_list:
@@ -354,7 +362,8 @@ class Listener(ConnectionListener):
         if data['player_number'] != self.model.player_num:
             self.model.players[data['player_number']].x_pos = 550 - self.model.players[self.model.player_num].rel_x_pos + data['rel_x_pos']
             self.model.players[data['player_number']].y_pos = 550 - self.model.players[self.model.player_num].rel_y_pos + data['rel_y_pos']
-            self.model.scroll_collision_index = data['scroll_collision_index']
+            #self.model.temp_scroll_collision_index = data['scroll_collision_index']
+    
     def Network_generate_maze(self, data):
         self.model.maze.maze_matrix = data['maze_matrix']
         self.model.maze.row_length = len(self.model.maze.maze_matrix)
@@ -397,13 +406,13 @@ class Listener(ConnectionListener):
                     self.model.create_scrolls(self.model.scroll_entity_list)
                     self.model.edit_maze_position()
                     self.model.edit_scroll_position()
+                    self.model.create_scroll_is_visible()
                     self.ran_initiations = True
                 # send to the server information about movement
                 connection.Send({'action': 'move', 
                                 'player_number': self.model.player_num, 
                                 'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos,
-                                'scroll_collision_index' : self.model.scroll_collision_index})
+                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
 
                 
             #print self.model.maze.maze_matrix
