@@ -8,6 +8,7 @@ from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
 # random module to randomize the initial ball direction
 from random import randint
+import random
 from Maze_Test import create_maze
 #from Escape_the_Maze_backup import *
 
@@ -24,23 +25,25 @@ class GenerateMaze(object):
 
 class EscapeTheMazeServerModel(object):
     def __init__(self):
-        self.players = []
+        self.players = [] ##keep empty
+        self.number_of_characters = 2   
         self.maze = GenerateMaze(10, 10)
-        locations = GenerateCharacter_Locations(self.maze)
-        self.char = locations.char_list
+        #locations = GenerateCharacterLocations(self)
+        self.char = (Character(550, 550, 20, 20), Character(550, 550, 20, 20))
+        #locations.char_list
 
-
+"""
 class GenerateCharacterLocations(object):
     def __init__(self, model):
+        self.model = model
         self.maze = model.maze
-        self.char_list = []
-        for i in range(number_of_characters):
+        for i in range(self.model.number_of_characters):
             x = random.randint(1, self.maze.MAZE_LENGTH - 1)
             x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             y = random.randint(1, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             char = Character(x_pos, y_pos, 20, 20)
-            self.char_list.append(char)
+            self.model.players.append(char)"""
 class Character(object):
     """represents the character"""
     def __init__(self, x_pos, y_pos, width, height):
@@ -50,9 +53,6 @@ class Character(object):
         self.rel_y_pos = y_pos
         self.width = width
         self.height = height
-        self.color = "red"
-        self.VEL = 2           #how many pixels it updates
-        self.DIAG_VEL = 2/1.4
         self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
 
 # class representing a sigle connection with a client
@@ -104,8 +104,11 @@ class MyServer(Server):
         # send to the player his number
         player.Send({'action': 'number', 'num': len(self.model.players)-1})       
         player.Send({'action': 'generate_maze', 'maze_matrix' : self.model.maze.maze_matrix})
+        #player.Send({'action': 'generate_players', 'char_list' : self.model.char})
         # if there are two player we can start the game
-        if len(self.model.players) == 2:
+        print len(self.model.players)
+        print self.model.number_of_characters
+        if len(self.model.players) == 2: #self.model.number_of_characters:
             # send to all players the ready message
             self.SendToAll({'action': 'ready'}) 
             # wait 4 seconds before starting the game

@@ -362,10 +362,14 @@ class Listener(ConnectionListener):
             self.model.players[data['player_number']].y_pos = 550 -self.model.players[self.model.player_num].rel_y_pos + data['rel_y_pos']
     def Network_generate_maze(self, data):
         self.model.maze.maze_matrix = data['maze_matrix']
-        self.model.maze.row_length = len(self.model.maze.maze_matrix - 1)
+        self.model.maze.row_length = len(self.model.maze.maze_matrix) - 1
         print self.model.maze.row_length
-        self.model.maze.column_length = len(self.model.maze.maze_matrix[0][:] - 1)
+        self.model.maze.column_length = len(self.model.maze.maze_matrix[0][:]) - 1
         print self.model.maze.column_length
+    """
+    def Network_generate_players(self, data):
+        self.model.players = data['char_list']
+        #print 'asdsad'"""
     # get the player number
     def Network_number(self, data):
         self.model.player_num = data['num']
