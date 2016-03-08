@@ -29,10 +29,12 @@ class EscapeTheMazeServerModel(object):
         self.number_of_characters = 2   
         self.maze = GenerateMaze(10, 10)
         #locations = GenerateCharacterLocations(self)
-        self.char = (Character(550, 550, 20, 20), Character(550, 550, 20, 20))
+        self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
+        self.char = []          ##this creates characters for the server
         #locations.char_list
+        GenerateCharacterLocations(self)
 
-"""
+
 class GenerateCharacterLocations(object):
     def __init__(self, model):
         self.model = model
@@ -42,8 +44,11 @@ class GenerateCharacterLocations(object):
             x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             y = random.randint(1, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+            char_entity = [x_pos, y_pos, 20, 20]
+            self.model.char_list.append(char_entity)
+            print char_entity
             char = Character(x_pos, y_pos, 20, 20)
-            self.model.players.append(char)"""
+            self.model.char.append(char)
 class Character(object):
     """represents the character"""
     def __init__(self, x_pos, y_pos, width, height):
@@ -102,9 +107,9 @@ class MyServer(Server):
         player.char = self.model.char[len(self.model.players)-1]      ##add player.char to players[]
         #player.Char = self.characters[len(self.players)-1]
         # send to the player his number
-        player.Send({'action': 'number', 'num': len(self.model.players)-1})       
+        player.Send({'action': 'number', 'num': len(self.model.players)-1})
         player.Send({'action': 'generate_maze', 'maze_matrix' : self.model.maze.maze_matrix})
-        #player.Send({'action': 'generate_players', 'char_list' : self.model.char})
+        player.Send({'action': 'generate_players', 'char_list' : self.model.char_list})
         # if there are two player we can start the game
         print len(self.model.players)
         print self.model.number_of_characters
@@ -126,7 +131,6 @@ class MyServer(Server):
             # if the game is started
             # wait 25 milliseconds
             #pygame.time.wait(2)
-            
             # reduce wait to start time if necessary
             if self.wait_to_start > 0:
                 self.wait_to_start -= 25

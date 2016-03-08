@@ -216,7 +216,7 @@ class EscapeTheMazeClientModel(object):
     def __init__(self):
         self.WINDOW_WIDTH = 1100
         self.WINDOW_HEIGHT = 1100
-        self.players = (Character(550, 550, 20, 20), Character(550, 550, 20, 20))
+        self.players = []#[Character(550, 550, 20, 20), Character(550, 550, 20, 20)]
         self.collision = None
         self.player_num = 0
         self.maze = Maze()
@@ -246,7 +246,10 @@ class EscapeTheMazeClientModel(object):
     def move_objects(self, x_vel, y_vel):
         """moves scroll and maze together"""
         self.move_maze(x_vel, y_vel)
-
+    def create_players(self, char_list):
+        for char_entity in char_list:
+            ##create a new character in players for each entity in char_list
+            self.players.append(Character(char_entity[0], char_entity[1], char_entity[2], char_entity[3]))  ##turns character entities into a Character to add to player
 class PyGameKeyboardController(object):
     def __init__(self, model):
         self.model = model
@@ -358,23 +361,24 @@ class Listener(ConnectionListener):
     # function to manage character movement
     def Network_move(self, data):
         if data['player_number'] != self.model.player_num:
-            self.model.players[data['player_number']].x_pos = 550 -self.model.players[self.model.player_num].rel_x_pos + data['rel_x_pos']
-            self.model.players[data['player_number']].y_pos = 550 -self.model.players[self.model.player_num].rel_y_pos + data['rel_y_pos']
+            self.model.players[data['player_number']].x_pos = self.model.players[self.model.player_num].x_pos -self.model.players[self.model.player_num].rel_x_pos + data['rel_x_pos']
+            self.model.players[data['player_number']].y_pos = self.model.players[self.model.player_num].y_pos -self.model.players[self.model.player_num].rel_y_pos + data['rel_y_pos']
     def Network_generate_maze(self, data):
         self.model.maze.maze_matrix = data['maze_matrix']
-        self.model.maze.row_length = len(self.model.maze.maze_matrix) - 1
-        print self.model.maze.row_length
-        self.model.maze.column_length = len(self.model.maze.maze_matrix[0][:]) - 1
-        print self.model.maze.column_length
-    """
-    def Network_generate_players(self, data):
-        self.model.players = data['char_list']
-        #print 'asdsad'"""
+        self.model.maze.row_length = len(self.model.maze.maze_matrix)
+        #print self.model.maze.row_length
+        self.model.maze.column_length = len(self.model.maze.maze_matrix[0][:])
+        #print self.model.maze.column_length
+
     # get the player number
     def Network_number(self, data):
         self.model.player_num = data['num']
         #print data['num']
-    
+
+    def Network_generate_players(self, data):
+        #self.model.test = data['char_list']
+        self.model.create_players(data['char_list'])
+
     # if the game is ready
     def Network_ready(self, data):
         self.ready = not self.ready
@@ -394,10 +398,12 @@ class Listener(ConnectionListener):
             if self.start:
                 if not self.ran_initiations:
                     print 'before lists'
+                    print self.model.players[1]
                     self.model.collision = CollisionDetection(self.model.players[self.model.player_num], self.model)
                     self.model.lists = Lists(self.model.players[self.model.player_num], self.model.collision, self.model.maze)
                     self.ran_initiations = True
                 # send to the server information about movement
+                print len(self.model.players)
                 connection.Send({'action': 'move', 
                                 'player_number': self.model.player_num, 
                                 'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
