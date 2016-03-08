@@ -26,58 +26,61 @@ class GenerateMaze(object):
 class EscapeTheMazeServerModel(object):
     def __init__(self):
         self.players = [] ##keep empty
-        self.NUMBER_OF_CHARACTERS = 2 
-        self.NUMBER_OF_SCROLLS = 8
-        self.maze = GenerateMaze(10, 10)
-        #locations = GenerateCharacterLocations(self)
+        self.NUMBER_OF_CHARACTERS = 2
+        self.NUMBER_OF_SCROLLS = 2
+        self.maze = GenerateMaze(5, 5)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
         self.scroll_list = []
         #locations.char_list
         GenerateCharacterLocations(self)
         GenerateScrollLocations(self)
-
 class GenerateScrollLocations(object):
     def __init__(self, model):
         self.model = model
         self.maze = model.maze
-        self.scroll_added = False
+        self.add_scroll = True
         while len(self.model.scroll_list) < self.model.NUMBER_OF_SCROLLS:
-            x = random.randint(1, self.maze.MAZE_LENGTH - 1)
+            x = random.randint(0, self.maze.MAZE_LENGTH - 1)
             x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
-            y = random.randint(1, self.maze.MAZE_HEIGHT - 1)
+            y = random.randint(0, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             scroll_entity = [x_pos, y_pos]
+
             for char in self.model.char_list:
-                print len(self.model.char_list)
                 if not(x_pos == char[0] and y_pos == char[1]):
-                    if len(self.model.scroll_list) == 0 and not self.scroll_added:
-                        self.model.scroll_list.append(scroll_entity)
-                        self.scroll_added = True
-                    else:
+                    if len(self.model.scroll_list) != 0:
                         for scroll in self.model.scroll_list:
-                                if not(x_pos == scroll[0] and y_pos == scroll[1]) and not self.scroll_added:
-                                    self.model.scroll_list.append(scroll_entity)
-                                    self.scroll_added = True
-
-            self.scroll_added = False
-
-        for scroll in self.model.scroll_list:
-            print scroll[0], ' , ', scroll[1]
+                                if (x_pos == scroll[0] and y_pos == scroll[1]):
+                                    self.add_scroll = False
+                else:
+                    self.add_scroll = False
+            if self.add_scroll:
+                self.model.scroll_list.append(scroll_entity)
+            self.add_scroll = True
 
 class GenerateCharacterLocations(object):
     def __init__(self, model):
         self.model = model
         self.maze = model.maze
-        for i in range(self.model.NUMBER_OF_CHARACTERS):
-            x = random.randint(1, self.maze.MAZE_LENGTH - 1)
+        self.add_char = True
+        while len(self.model.char_list) < self.model.NUMBER_OF_CHARACTERS:
+            x = random.randint(0, self.maze.MAZE_LENGTH - 1)
             x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
-            y = random.randint(1, self.maze.MAZE_HEIGHT - 1)
+            y = random.randint(0, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+            #print x,y
             char_entity = [x_pos, y_pos]
-            self.model.char_list.append(char_entity)
-            char = Character(x_pos, y_pos, 20, 20)
-            self.model.char.append(char)
+            if len(self.model.char_list) != 0:
+                for char in self.model.char_list:
+                    if (x_pos == char[0] and y_pos == char[1]):
+                        self.add_char = False
+            if self.add_char:
+                self.model.char_list.append(char_entity)
+                char = Character(x_pos, y_pos, 20, 20)
+                self.model.char.append(char)
+            self.add_char = True
+
 class Character(object):
     """represents the character"""
     def __init__(self, x_pos, y_pos, width, height):
@@ -158,7 +161,7 @@ class MyServer(Server):
             myserver.Pump()
             # if the game is started
             # wait 25 milliseconds
-            #pygame.time.wait(2)
+            #pygame.time.wait(10)
             # reduce wait to start time if necessary
             if self.wait_to_start > 0:
                 self.wait_to_start -= 25
@@ -181,6 +184,6 @@ address = 'localhost'
 #address = '10.7.24.168'
 # inizialize the server
 model = EscapeTheMazeServerModel()
-myserver = MyServer(model, localaddr=(address, 31500))
+myserver = MyServer(model, localaddr=(address, 32500))
 # start mainloop
 myserver.Loop()

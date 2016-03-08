@@ -91,8 +91,6 @@ class Character(object):
         self.width = width
         self.height = height
         self.color = "red"
-        self.VEL = 3           #how many pixels it updates
-        self.DIAG_VEL = 3/1.4
         self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
     def update_relative_positions(rel_x_pos, rel_y_pos):
         self.rel_x_pos = rel_x_pos
@@ -430,15 +428,15 @@ class Listener(ConnectionListener):
             #   pygame.display.flip()
     
             # wait 25 milliseconds
-            #pygame.time.wait(1)
+            pygame.time.wait(10)
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
         self.model = model
         self.move_ticker = 0
         self.REFRESH_RATE = 0 #how many loops before it updates the velocity
-        self.DIAG_VEL = 3/1.4 #self.model.players[self.model.player_num].DIAG_VEL
-        self.VEL = 3 #self.model.players[self.model.player_num].VEL
+        self.DIAG_VEL = 4/1.4 #self.model.players[self.model.player_num].DIAG_VEL
+        self.VEL = 4 #self.model.players[self.model.player_num].VEL
         #self.players = self.model.players  #set attributes of players
         #self.collision = self.model.collision
         #self.lists = self.model.lists
@@ -531,7 +529,7 @@ if __name__ == '__main__':
     size = (model.WINDOW_WIDTH, model.WINDOW_HEIGHT)
     screen = pygame.display.set_mode(size)
     controller = PyGameKeyboardController(model)
-    listener = Listener(model, server, 31500)
+    listener = Listener(model, server, 32500)
     view = PygameEscapeTheMazeView(model, screen, listener)
     running = True
     while running:
