@@ -56,6 +56,12 @@ class PygameEscapeTheMazeView(object):
             if self.model.monster_num == self.model.player_num:
                 self.screen.blit(self.font1.render("Monster", True, (0,0,0)), (460, 20))
 
+            if self.win or (scroll_counter == len(self.model.lists.scroll_rect_list) and self.model.exit_collision):
+                self.win = True
+                self.screen.blit(self.font2.render("YOU WIN!", True, (0, 0, 255)), (500, 500))
+            elif not(self.win or (scroll_counter == len(self.model.lists.scroll_rect_list))) and self.model.exit_collision:
+                self.screen.blit(self.font1.render("You still need more scrolls...", True, (0, 0, 255)), (500, 500))
+            
             self.model.check_game()
             pygame.display.update()
 
@@ -285,7 +291,7 @@ class CollisionDetection(object):
         self.character = character
         self.model = model
         self.char_is_colliding = False
-        self.exit_collision = False
+        # self.exit_collision = False
         ##create rectangle list and boolean list
         #def create_collision_rectangle():
     def return_collision_bool(self, rect, rect_list):
@@ -295,9 +301,6 @@ class CollisionDetection(object):
     def update_character_collision(self):
         """"sees if the character collides with the maze"""
         self.char_is_colliding = self.return_collision_bool(self.character.rect, self.model.lists.maze_segment_rect_list)
-
-    def update_exit_collision(self):
-        self.exit_collision = self.character.rect.colliderect(self.model.exit.rect) == 1
 
 class EscapeTheMazeClientModel(object):
     def __init__(self):
@@ -311,6 +314,7 @@ class EscapeTheMazeClientModel(object):
         self.char_list = None
         self.scroll_entity_list = []
         self.scroll_collision_index = -1
+        # self.exit_collision = False
         self.temp_scroll_collision_index = -1
         self.scroll_removed = True
         self.fog_of_war = None
@@ -332,6 +336,9 @@ class EscapeTheMazeClientModel(object):
         if self.ticker < 11:
             self.ticker += 1
 
+    def update_exit_collision(self):
+        self.exit_collision = self.players[self.player_num].rect.colliderect(self.exit.rect) == 1
+
     def update_characters(self):
         for char in self.players:
             char.rect.left = char.x_pos
@@ -342,6 +349,7 @@ class EscapeTheMazeClientModel(object):
         self.lists.update_scroll_rect_list()
         self.update_exit()
         self.collision.update_character_collision()
+        self.update_exit_collision()
         self.lists.update_maze_segment_rect_list()
         self.update_characters()
         self.update_monster()
@@ -570,6 +578,7 @@ class Listener(ConnectionListener):
                                     'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
                 self.model.lists.update_maze_segment_rect_list()
                 self.model.update_characters()
+                self.model.update_exit_collision()
                 connection.Send({'action': 'move', 
                                     'player_number': self.model.player_num, 
                                     'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
