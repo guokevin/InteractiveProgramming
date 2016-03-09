@@ -56,9 +56,10 @@ class PygameEscapeTheMazeView(object):
             if self.model.monster_num == self.model.player_num:
                 self.screen.blit(self.font1.render("Monster", True, (0,0,0)), (460, 20))
 
-            if self.win or (scroll_counter == len(self.model.lists.scroll_rect_list) and self.model.exit_collision):
-                self.win = True
-                self.screen.blit(self.font2.render("YOU WIN!", True, (0, 0, 255)), (500, 500))
+            if self.model.player_num != self.model.monster_num:
+                if self.win or (scroll_counter == len(self.model.lists.scroll_rect_list) and self.model.exit_collision):
+                    self.win = True
+                    self.screen.blit(self.font2.render("YOU WIN!", True, (0, 0, 255)), (500, 500))
             elif not(self.win or (scroll_counter == len(self.model.lists.scroll_rect_list))) and self.model.exit_collision:
                 self.screen.blit(self.font1.render("You still need more scrolls...", True, (0, 0, 255)), (500, 500))
             
