@@ -27,8 +27,8 @@ class EscapeTheMazeServerModel(object):
     def __init__(self):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = 2
-        self.NUMBER_OF_SCROLLS = 2
-        self.maze = GenerateMaze(5, 5)
+        self.NUMBER_OF_SCROLLS = 8
+        self.maze = GenerateMaze(7, 7)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
         self.scroll_list = []
@@ -104,7 +104,8 @@ class ClientChannel(Channel):
         self.char.y_pos = data['rel_y_pos']
         # send to all other clients the information about moving
         self._server.SendToAll(data)
-
+    def Network_update_entities(self, data):
+        self._server.SendToAll(data)
 # class representing the server
 class MyServer(Server):
     channelClass = ClientChannel
@@ -144,7 +145,7 @@ class MyServer(Server):
         # if there are two player we can start the game
         #print len(self.model.players)
         #print self.model.number_of_characters
-        if len(self.model.players) == self.model.NUMBER_OF_CHARACTERS:
+        if len(self.model.players) == self.model.NUMBER_OF_CHARACTERS: #self.model.NUMBER_OF_CHARACTERS:
             # send to all players the ready message
             self.SendToAll({'action': 'ready'}) 
             # wait 4 seconds before starting the game
@@ -184,6 +185,6 @@ address = 'localhost'
 #address = '10.7.24.168'
 # inizialize the server
 model = EscapeTheMazeServerModel()
-myserver = MyServer(model, localaddr=(address, 32500))
+myserver = MyServer(model, localaddr=(address, 8000))
 # start mainloop
 myserver.Loop()

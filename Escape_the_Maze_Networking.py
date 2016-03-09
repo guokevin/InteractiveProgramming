@@ -484,7 +484,7 @@ class PyGameKeyboardController(object):
                 self.character.rel_y_pos -= 1
                 self.character.y_pos -= 1
         #self.model.update_maze_position(self.character.rel_x_pos, self.character.rel_y_pos)
-        print "(            " , self.character.rel_x_pos , ", " , self.character.rel_y_pos
+        #print "(            " , self.character.rel_x_pos , ", " , self.character.rel_y_pos
         #self.model.character.update_relative_positions()
         self.move_ticker += 1
 
