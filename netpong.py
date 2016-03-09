@@ -1,56 +1,172 @@
-# import pygame
 import pygame
 # import network module
 from PodSixNet.Connection import connection, ConnectionListener
 from pygame.locals import QUIT, KEYDOWN, MOUSEMOTION
 import time
+import sys
 import math
 from random import choice
 import random
+from pygame.locals import *
 # from Maze_Escape import *
 #from Escape_the_Maze_backup import *
+pygame.init()
+pygame.mixer.init(frequency=22050,size=-16,channels=4)
+amnesia_sound = pygame.mixer.Sound('Amnesia_Theme.ogg')
+illuminati_sound = pygame.mixer.Sound('Illuminati_Sound.ogg')
+underground_sound = pygame.mixer.Sound('Underground_Theme.ogg')
+sewers_sound = pygame.mixer.Sound('Sewers_Theme.ogg')
+scroll_sound = pygame.mixer.Sound('Scroll_Collect.ogg')
+connect_sound = pygame.mixer.Sound('Connect_Sound.ogg')
 
-# init pygame
-
+class Time(object):
+    def __init__(self):
+        self.start_time = 0
+        self.time_elapsed = 0
+        self.time_started = False
+    def reset_timer(self):
+        if not self.time_started:
+            self.start_time = int(time.clock()*1000)
+            self.time_started = True
+    def current_time(self):
+        return int(time.clock()*1000) - self.start_time
+    def reset_timer_bool(self):
+        self.time_started = False
 class PygameEscapeTheMazeView(object):
     def __init__(self, model, screen, listener):
         """Initialize the view with the specified model"""
         self.model = model
         self.screen = screen
         self.listener = listener
-        self.font1 = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
+        self.font1 = pygame.font.SysFont('purisa', 20, True)
         self.font2 = pygame.font.SysFont('sans,freesans,courier,arial', 48, True)
+        self.font4 = pygame.font.SysFont('sans,freesans,courier,arial', 100, True)
+        self.font3 = pygame.font.SysFont('purisa', 70, True)
         self.win = False
+        self.alter_revealed = False
+        self.ticker = 0
+        self.played = False
 
     def draw(self):
-            ## if the actual game has started
-            ##background is grey
+        if self.listener.start and self.ticker > 30:
+            ## if the actual game has started background is grey
             self.screen.fill(pygame.Color('grey'))
             ##create the mazes for the rectangle
             for rect in self.model.lists.maze_segment_rect_list:
                 pygame.draw.rect(self.screen, pygame.Color('black'), rect)
-            #print len(self.model.lists.maze_segment_rect_list)
-            ##draw the scrolls
-            #print self.model.lists.number_of_scrolls
-            #print len(self.model.lists.scroll_is_visible)
-            for i, rect in enumerate(self.model.lists.scroll_rect_list):
-                    #rect = (scroll.x_pos, scroll.y_pos, scroll.width, scroll.height)
-                if self.model.lists.scroll_list[i].is_visible:
+
+            dist = self.model.cartesian_dist()
+            if dist < 150:
+                alter_color = ((192.0/150)*dist,(192.0/150)*dist,(192.0/150)*dist)
+                # color = pygame.Color('black')
+                pygame.draw.rect(self.screen, alter_color, self.model.exit.rect)
+                # print self.model.exit.rect
+            if dist < 50 and not self.alter_revealed:
+                self.alter_revealed = True
+                illuminati_sound.play() 
+            for i, scroll in enumerate(self.model.lists.scroll_list):
+                if scroll.is_visible:
+                    rect = pygame.Rect(scroll.border_x_pos, scroll.border_y_pos, scroll.border_width, scroll.border_height)
+                    pygame.draw.rect(self.screen, pygame.Color('black'), rect)
+                    rect = pygame.Rect(scroll.x_pos, scroll.y_pos, scroll.width, scroll.height)
                     pygame.draw.rect(self.screen, pygame.Color('gold'), rect)
-            ##draw the character rectangles                
+
+                    rect = pygame.Rect(scroll.border_nub_x_pos, scroll.border_nub2_y_pos, scroll.border_nub_size, scroll.border_nub_size)
+                    pygame.draw.rect(self.screen, pygame.Color('black'), rect)
+                    rect = pygame.Rect(scroll.border_nub_x_pos, scroll.border_nub1_y_pos, scroll.border_nub_size, scroll.border_nub_size)
+                    pygame.draw.rect(self.screen, pygame.Color('black'), rect)
+
+                    rect = pygame.Rect(scroll.nub_x_pos, scroll.nub2_y_pos, scroll.nub_size, scroll.nub_size)
+                    pygame.draw.rect(self.screen, pygame.Color('white'), rect)
+                    rect = pygame.Rect(scroll.nub_x_pos, scroll.nub1_y_pos, scroll.nub_size, scroll.nub_size)
+                    pygame.draw.rect(self.screen, pygame.Color('white'), rect)
+
+
+
             for char in self.model.players:
-                pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
+                if self.model.players[self.model.player_num].still_alive:
+                    if char.still_alive:
+                        pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
+            is_monster = self.model.monster_num == self.model.player_num                     
+            self.model.fog_of_war.draw_fog_of_war(self.screen, is_monster)
 
-            for rect in self.model.lists.collision_rect_list:
-                pygame.draw.rect(self.screen, pygame.Color('green'), rect)
+           
+            ##draw the scroll rectangles
+            scrolls_collected = self.model.lists.total_number_of_scrolls - self.model.lists.number_of_scrolls
 
-            #self.model.fog_of_war.draw_fog_of_war(self.screen)
+            if self.model.lists.number_of_scrolls == 0:
+                self.screen.blit(self.font1.render("All Scrolls Have Been found!", True, (255,0,0)), (350, 700))
+                self.screen.blit(self.font1.render("GET TO THE ALTER BEFORE HE EATS YOU!", True, (255,0,0)), (350, 750))
+            if not self.model.players[self.model.player_num].still_alive:
+                self.screen.fill((255,0,0))
+                self.screen.blit(self.font2.render("YOU GOT EATEN", True, (0,0,0)), (460, 500))
+            #print scroll_counter, self.model.lists.number_of_scrolls
+            for i in range(scrolls_collected):
+                pygame.draw.rect(self.screen, pygame.Color('white'), (20*i + 10, 10, 15, 15))
+            self.screen.blit(self.font1.render(str(scrolls_collected) + '/' + str(self.model.lists.total_number_of_scrolls), True, (255,255,255)), (180, 6) )
 
+            
+
+            # for rect in self.model.lists.collision_rect_list:
+            #     pygame.draw.rect(self.screen, pygame.Color('green'), rect)
+            
+            if self.model.monster_num == self.model.player_num:
+                self.screen.blit(self.font1.render("Monster", True, (0,0,0)), (460, 20))
+
+            if self.model.player_num != self.model.monster_num:
+                if self.win or (scrolls_collected == self.model.lists.total_number_of_scrolls and self.model.exit_collision):
+                    self.win = True
+                    self.screen.blit(self.font2.render("YOU WIN!", True, (0, 0, 255)), (500, 500))
+                elif self.model.exit_collision:
+                    self.screen.blit(self.font1.render("The Alter is still locked", True, (255,255,255)), (400, 700))
+            
+            self.model.check_game()
             pygame.display.update()
+        elif self.ticker < 31:
+            self.ticker += 1
+
     def draw_lobby(self):
-        pygame.draw.rect(self.screen, pygame.Color('red'), (50,50,50,50))
-        self.screen.blit(self.font1.render('Waiting for players...', True, (0, 0, 255)), (460, 500))
+        """draw lobby before the game starts"""
+        self.screen.fill(pygame.Color('black'))
+        for i in range(self.model.connected_players):
+            #print self.model.connected_players
+            if len(self.model.is_players_ready) != 0:
+                if self.model.is_players_ready[i]:
+                    pygame.draw.rect(self.screen, pygame.Color('green'), (100*i + 300, 450, 70, 70))
+                else:
+                    pygame.draw.rect(self.screen, pygame.Color('red'), (100*i + 300, 450, 70, 70))
+                if self.model.player_ready:
+                    self.screen.blit(self.font1.render('Waiting for Other Players', True, (0, 255, 0)), (400, 700))
+                else:
+                    self.screen.blit(self.font1.render('Press SpaceBar to Ready', True, (255, 0, 0)), (400, 700))
+        self.screen.blit(self.font3.render('ESCAPE THE MAZE', True, (255, 255, 255)), (200, 100))
         pygame.display.update()
+
+    def draw_load_screen(self):
+        """draws the screen before entering the story screen"""
+        time_elapsed = t1.current_time()
+        #t_start = time.clock()
+        #time_elapsed = time.clock() - t_start
+        self.screen.fill(pygame.Color('black'))
+        for i in range(self.model.connected_players):
+            if self.model.is_players_ready[i]:
+                pygame.draw.rect(self.screen, pygame.Color('green'), (100*i + 300, 450, 70, 70))
+        self.screen.blit(self.font3.render('ESCAPE THE MAZE', True, (255, 255, 255)), (200, 100))
+        if time_elapsed < 500:
+            self.screen.blit(self.font4.render('3', True, (255, 255, 255)), (550, 700))          
+        if time_elapsed > 500 and time_elapsed < 1000:
+
+            self.screen.blit(self.font4.render('2', True, (255, 255, 255)), (550, 700))
+        if time_elapsed > 1000 and time_elapsed < 1500:
+            self.screen.blit(self.font4.render('1', True, (255, 255, 255)), (550, 700))
+
+        if (time_elapsed < 10) or (time_elapsed > 500 and time_elapsed < 510) or (time_elapsed > 1000 and time_elapsed < 1010) or (time_elapsed > 1500 and time_elapsed < 1510):
+            connect_sound.play()
+        pygame.display.update()
+
+
+
+
 
 class FogOfWar(object):
     def __init__(self, character, x_pos, y_pos, radius):
@@ -61,15 +177,19 @@ class FogOfWar(object):
     def update_fog_of_war(self):
         self.x_pos = self.character.x_pos + self.character.width/2
         self.y_pos = self.character.y_pos + self.character.height/2
-    def draw_fog_of_war(self, screen):
-        left_rect = pygame.Rect(0, 0, self.x_pos - self.radius, 1000)
-        right_rect = pygame.Rect(self.x_pos + self.radius, 0, 1000, 1000)
-        bottom_rect = pygame.Rect(0, self.y_pos + self.radius, 1000, 1000)
+    def draw_fog_of_war(self, screen, is_monster):
+        if is_monster:
+            color = 'red'
+        else:
+            color = 'black'
+        left_rect = pygame.Rect(0, 0, self.x_pos - self.radius, 1100)
+        right_rect = pygame.Rect(self.x_pos + self.radius, 0, 1100, 1100)
+        bottom_rect = pygame.Rect(0, self.y_pos + self.radius, 1100, 1100)
         top_rect = pygame.Rect(0, 0, 1000,  self.y_pos - self.radius)
-        pygame.draw.rect(screen, pygame.Color('black'), left_rect)
-        pygame.draw.rect(screen, pygame.Color('black'), right_rect)
-        pygame.draw.rect(screen, pygame.Color('black'), bottom_rect)
-        pygame.draw.rect(screen, pygame.Color('black'), top_rect)
+        pygame.draw.rect(screen, pygame.Color(color), left_rect)
+        pygame.draw.rect(screen, pygame.Color(color), right_rect)
+        pygame.draw.rect(screen, pygame.Color(color), bottom_rect)
+        pygame.draw.rect(screen, pygame.Color(color), top_rect)
         for i in range(50):
             ang = i * math.pi * 2.0 / 50
             dx = int(math.cos(ang) * (self.radius + 50))
@@ -77,9 +197,10 @@ class FogOfWar(object):
             x = self.x_pos + dx
             y = self.y_pos + dy
             pygame.draw.circle(screen, 
-                            pygame.Color('black'), 
-                            (x, y), 
+                            pygame.Color(color), 
+                            (int(x), int(y)), 
                             50)
+
 class Maze(object):
     def __init__(self):
         """Initializes all attributes necessary to create a maze"""
@@ -105,9 +226,35 @@ class Scroll(object):
     def __init__(self, x_pos, y_pos, width, height, is_visible):
         self.x_pos = x_pos
         self.y_pos = y_pos
+        self.BORDER_MARGIN = 2
         self.width = width
         self.height = height
+        self.border_x_pos = self.x_pos - self.BORDER_MARGIN
+        self.border_y_pos = self.y_pos - self.BORDER_MARGIN
+        self.border_width = self.width + self.BORDER_MARGIN*2
+        self.border_height = self.height + self.BORDER_MARGIN*2
+        self.nub_size = 6
+        self.NUB_MARGIN = 2
+        self.nub_x_pos = self.x_pos + (self.width - self.nub_size)/2
+        self.nub1_y_pos = self.y_pos - self.nub_size - self.NUB_MARGIN
+        self.nub2_y_pos = self.y_pos + self.height + self.NUB_MARGIN
+        self.border_nub_x_pos = self.nub_x_pos - self.NUB_MARGIN
+        self.border_nub1_y_pos = self.nub1_y_pos - self.NUB_MARGIN
+        self.border_nub2_y_pos = self.nub2_y_pos - self.NUB_MARGIN
+        self.border_nub_size = self.nub_size + self.NUB_MARGIN*2
         self.is_visible = is_visible
+
+class Exit(object):
+    def __init__(self, x_pos, y_pos):
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+        self.width = 40
+        self.height = 40
+        self.rect = pygame.Rect(self.x_pos - self.width/2, self.y_pos - self.height/2, self.width, self.height)
+        self.center = self.update_center()
+
+    def update_center(self):
+        return [self.x_pos - self.width/2, self.y_pos - self.height/2]
 
 class Character(object):
     """represents the character"""
@@ -118,8 +265,17 @@ class Character(object):
         self.rel_y_pos = rel_y_vel
         self.width = width
         self.height = height
-        self.color = "red"
-        self.rect = pygame.Rect(self.x_pos, self.x_pos, self.width, self.height)
+        self.color = "blue"
+        self.VEL = 3           #how many pixels it updates
+        self.DIAG_VEL = 3/1.4
+        self.rect = pygame.Rect(self.x_pos, self.y_pos, self.width, self.height)
+        self.monster = False
+        self.still_alive = True
+        self.center = self.update_center()
+
+    def update_center(self):
+        return [self.x_pos - self.width/2, self.y_pos - self.height/2]
+
     def update_relative_positions(rel_x_pos, rel_y_pos):
         self.rel_x_pos = rel_x_pos
         self.rel_y_pos = rel_y_pos
@@ -137,6 +293,7 @@ class Lists():
         self.scroll_rect_list = []
         #self.scroll_is_visible = [True, True]
         self.number_of_scrolls = 0
+        self.total_number_of_scrolls = 0
         self.scroll_list = []
         ####################################
         ##GERENATE MAZE SEGMENT RECTANGLES##
@@ -251,7 +408,7 @@ class CollisionDetection(object):
         self.character = character
         self.model = model
         self.char_is_colliding = False
-        self.exit_collision = False
+        # self.exit_collision = False
         ##create rectangle list and boolean list
         #def create_collision_rectangle():
     def return_collision_bool(self, rect, rect_list):
@@ -261,8 +418,6 @@ class CollisionDetection(object):
     def update_character_collision(self):
         """"sees if the character collides with the maze"""
         self.char_is_colliding = self.return_collision_bool(self.character.rect, self.model.lists.maze_segment_rect_list)
-    #def update_exit_collision(self):
-    #    self.exit_collision = self.character.rect.colliderect(self.model.exit.rect) == 1
 
 class EscapeTheMazeClientModel(object):
     def __init__(self):
@@ -275,14 +430,33 @@ class EscapeTheMazeClientModel(object):
         self.lists = None ##initiate lists object
         self.char_list = None
         self.scroll_entity_list = []
-        #self.scroll_is_visible = []
         self.scroll_collision_index = -1
+        # self.exit_collision = False
         self.temp_scroll_collision_index = -1
         self.scroll_removed = True
         self.fog_of_war = None
+        self.exit = None
+        self.connected_players = 0
+        self.ticker = 0
+        self.player_ready = False
+        self.is_players_ready = []
+
     def run_model(self):
         self.fog_of_war.update_fog_of_war()
-        #self.update_entities()
+
+    def update_monster(self):
+        if self.ticker >50:
+            self.monster = self.players[self.monster_num]
+            # print "player: ", self.player_num, self.players[self.player_num].rect, "monster: ", self.monster_num, self.players[self.monster_num].rect
+            if self.players[self.player_num].rect.colliderect(self.monster.rect) and self.player_num != self.monster_num:
+                # print 'collided'
+                # print self.player_num, self.players[self.player_num].rect, self.monster_num, self.players[self.monster_num].rect
+                self.players[self.player_num].still_alive = False
+        if self.ticker < 51:
+            self.ticker += 1
+
+    def update_exit_collision(self):
+        self.exit_collision = self.players[self.player_num].rect.colliderect(self.exit.rect) == 1
 
     def update_characters(self):
         for char in self.players:
@@ -292,46 +466,85 @@ class EscapeTheMazeClientModel(object):
     def update_entities(self):
         self.update_scrolls()
         self.lists.update_scroll_rect_list()
+        self.update_exit()
         self.collision.update_character_collision()
+        self.update_exit_collision()
         self.lists.update_maze_segment_rect_list()
         self.update_characters()
+        self.update_monster()
         self.lists.update_collision_rect_list()
         self.lists.update_collision_rect_is_colliding_list()
         #self.lists.update_scroll_is_colliding_list()
 
-
     def update_scrolls(self):
-        self.scroll_collision_index = self.players[self.player_num].rect.collidelist(self.lists.scroll_rect_list)
+        if self.player_num != self.monster_num:
+            self.scroll_collision_index = self.players[self.player_num].rect.collidelist(self.lists.scroll_rect_list)
         if self.temp_scroll_collision_index != -1:
+            if(self.lists.scroll_list[self.temp_scroll_collision_index].is_visible):
+                scroll_sound.play()
             self.lists.scroll_list[self.temp_scroll_collision_index].is_visible = False
+            
             self.temp_scroll_collision_index = -1
         number_of_scrolls = 0
         for scroll in self.lists.scroll_list:
             if scroll.is_visible:
                 number_of_scrolls += 1
         self.lists.number_of_scrolls = number_of_scrolls
-        #print self.scroll_is_visible
 
+    def update_exit(self):
+        self.exit.rect = pygame.Rect(self.exit.x_pos - self.exit.width/2, self.exit.y_pos - self.exit.height/2, self.exit.width, self.exit.height)
 
     def move_maze(self, x_vel, y_vel):
         """moves the maze"""
         for maze_segment in self.lists.maze_segment_list:
             maze_segment.x_pos += x_vel
             maze_segment.y_pos += y_vel
+
     def move_scrolls(self, x_vel, y_vel):
         for scroll in self.lists.scroll_list:
             scroll.x_pos += x_vel
             scroll.y_pos += y_vel
+            scroll.border_x_pos += x_vel
+            scroll.border_y_pos += y_vel
+            scroll.nub_x_pos += x_vel
+            scroll.nub1_y_pos += y_vel
+            scroll.nub2_y_pos += y_vel
+            scroll.border_nub1_y_pos += y_vel
+            scroll.border_nub2_y_pos += y_vel
+            scroll.border_nub_x_pos +=x_vel
+
+    def move_exit(self, x_vel, y_vel):
+        self.exit.x_pos += x_vel
+        self.exit.y_pos += y_vel
 
     def move_objects(self, x_vel, y_vel):
         """moves scroll and maze together"""
         self.move_maze(x_vel, y_vel)
         self.move_scrolls(x_vel, y_vel)
+        self.move_exit(x_vel,y_vel)
 
     def edit_maze_position(self):      ##this is run once on initilization
         for maze_segment in self.lists.maze_segment_list:
             maze_segment.x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
             maze_segment.y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+
+    def edit_scroll_position(self):
+        for scroll in self.lists.scroll_list:
+            scroll.x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
+            scroll.y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+            scroll.border_x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
+            scroll.border_y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+
+            scroll.nub_x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
+            scroll.nub1_y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+            scroll.nub2_y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+            scroll.border_nub1_y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+            scroll.border_nub2_y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+            scroll.border_nub_x_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_x_pos
+
+    def edit_exit_position(self):
+        self.exit.x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
+        self.exit.y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
 
     def create_fog_of_war(self):
         self.fog_of_war = FogOfWar(self.players[self.player_num],         ##create fog of war
@@ -339,19 +552,29 @@ class EscapeTheMazeClientModel(object):
                             self.players[self.player_num].x_pos, 100)
 
     def create_players(self):
+        # print self.char_list
         for char_entity in self.char_list:
-            ##create a new character in players for eawqch entity in char_list
-            self.players.append(Character(self.WINDOW_WIDTH/2, 
+            ##create a new character in players for each entity in char_list
+            new_char = Character(self.WINDOW_WIDTH/2, 
                                 self.WINDOW_HEIGHT/2, 
                                 char_entity[0], 
-                                char_entity[1], 
+                                char_entity[1],
                                 20, 
-                                20))  ##turns character entities into a Character to add to player
+                                20)
+            self.monster_num = char_entity[2]
+            self.players.append(new_char)
+            # print new_char.rect
+            ##turns character entities into a Character to add to player
+
+    def cartesian_dist(self):
+        return math.sqrt((self.players[self.player_num].update_center()[0] - self.exit.update_center()[0])**2 +
+                        (self.players[self.player_num].update_center()[1] - self.exit.update_center()[1])**2)
 
     def create_scrolls(self, scroll_entity_list):
         for scroll_entity in scroll_entity_list:
             ##create a new scroll in scroll_list for each entity in the list
             self.lists.scroll_list.append(Scroll(scroll_entity[0], scroll_entity[1], 10, 25, True))  ##adds a scroll into scroll_list, with width 7, height 20
+        self.lists.total_number_of_scrolls = len(self.lists.scroll_list)
         self.lists.number_of_scrolls = len(self.lists.scroll_list)
 
     def create_scroll_is_visible(self):
@@ -360,10 +583,22 @@ class EscapeTheMazeClientModel(object):
             self.scroll_is_visible.append(True)
         #print len(self.lists.scroll_is_visible)
 
-    def edit_scroll_position(self):
-        for scroll in self.lists.scroll_list:
-            scroll.x_pos += self.WINDOW_WIDTH/2 - self.players[self.player_num].rel_x_pos
-            scroll.y_pos += self.WINDOW_HEIGHT/2 - self.players[self.player_num].rel_y_pos
+    def check_game(self):
+        alive_players = 0
+        for character in self.players:
+            if character.still_alive:
+                alive_players += 1
+
+    def create_monster(self):
+        self.players[self.monster_num].width = self.players[self.monster_num].width*1.5
+        self.players[self.monster_num].height = self.players[self.monster_num].height*1.5
+        self.players[self.monster_num].color = "red"
+        self.players[self.monster_num].rect = pygame.Rect(self.players[self.monster_num].x_pos,
+                                                                    self.players[self.monster_num].y_pos,
+                                                                    self.players[self.monster_num].width,
+                                                                    self.players[self.monster_num].height)
+        self.monster = self.players[self.monster_num]
+        # print "player: ", self.players[self.player_num].rect , "monster: ", self.monster.rect
 
 # class for I/O on network
 # this represent the player, too
@@ -385,24 +620,19 @@ class Listener(ConnectionListener):
 
         # True if the server sended the ready message
         self.ready = False
+        self.load_screen = False
         # True if the game is working
         self.start = False
         self.running = True
         # font for writing the scores
         self.font = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
 
-        #self.x_pos = [0,0]
-        #self.y_pos = [0,0]
     # function to manage character movement
     def Network_move(self, data):
         if data['player_number'] != self.model.player_num:
             self.model.players[data['player_number']].x_pos = 550 - self.model.players[self.model.player_num].rel_x_pos + data['rel_x_pos']
             self.model.players[data['player_number']].y_pos = 550 - self.model.players[self.model.player_num].rel_y_pos + data['rel_y_pos']
-            #self.model.plauers[data['players_number']].scroll_is_visible = data['scroll_is_visible']
 
-    def Network_update_entities(self, data):
-        #if data['player_number'] != self.model.player_num:
-        self.model.temp_scroll_collision_index = data['scroll_collision_index']
     def Network_generate_maze(self, data):
         self.model.maze.maze_matrix = data['maze_matrix']
         self.model.maze.row_length = len(self.model.maze.maze_matrix)
@@ -419,10 +649,34 @@ class Listener(ConnectionListener):
         self.model.char_list = data['char_list']
         self.model.scroll_entity_list = data['scroll_list']
         self.model.create_players()
+        self.model.create_fog_of_war()
+
+    def Network_exit_location(self,data):
+        exit_location = data['exit']
+        self.model.exit = Exit(exit_location[0],exit_location[1])
+
+    def Network_update_entities(self, data):
+        #if data['player_number'] != self.model.player_num:
+        self.model.temp_scroll_collision_index = data['scroll_collision_index']
+
+    def Network_update_alive(self, data):
+        self.model.players[data['player_number']].still_alive = data['still_alive']
+    
+    # def Network_monster_number(self,data):
+    #     self.model.monster_num = data['monster_num']
+    def Network_ready_players(self, data):
+        self.model.connected_players = data['connected_players']
+        self.model.is_players_ready = []
+        for i in range(self.model.connected_players):
+            self.model.is_players_ready.append(False)
+    def Network_lobby(self, data):
+        #self.model.connected_players = data['connected_players']   
+        player_ready = data['p_ready']
+        self.model.is_players_ready[data['player_number']] = player_ready
 
     # if the game is ready
     def Network_ready(self, data):
-        self.ready = not self.ready
+        self.load_screen = True
 
     # start the game
     def Network_start(self, data):
@@ -437,7 +691,15 @@ class Listener(ConnectionListener):
             # update the listener
             self.Pump()
             if self.start:
+                self.ready = False
                 if not self.ran_initiations:
+                    sound_int = random.randint(0,2)
+                    if sound_int == 0:
+                        amnesia_sound.play()
+                    if sound_int == 1:
+                        underground_sound.play()
+                    if sound_int == 2:
+                        sewers_sound.play()
                     print 'before lists'
                     #print self.model.player_number
                     self.model.collision = CollisionDetection(self.model.players[self.model.player_num], self.model)
@@ -445,70 +707,69 @@ class Listener(ConnectionListener):
                     self.model.create_scrolls(self.model.scroll_entity_list)
                     self.model.edit_maze_position()
                     self.model.edit_scroll_position()
+                    self.model.edit_exit_position()
                     #self.model.create_scroll_is_visible()
-                    self.model.create_fog_of_war()
                     self.ran_initiations = True
-                # send to the server information about movement
+                    self.model.create_monster()
 
+                # send to the server information about movement
+                self.model.update_exit()
                 self.model.update_scrolls()
                 self.model.lists.update_scroll_rect_list()
                 self.model.collision.update_character_collision()
                 connection.Send({'action': 'move', 
-                                    'player_number': self.model.player_num, 
-                                    'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                    'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
+                                'player_number': self.model.player_num, 
+                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
+                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
                 self.model.lists.update_maze_segment_rect_list()
                 self.model.update_characters()
+                self.model.update_exit_collision()
                 connection.Send({'action': 'move', 
-                                    'player_number': self.model.player_num, 
-                                    'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                    'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
+                                'player_number': self.model.player_num, 
+                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
+                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
                 self.model.lists.update_collision_rect_list()
                 self.model.lists.update_collision_rect_is_colliding_list()
+                self.model.update_monster()
                 connection.Send({'action': 'move', 
-                                    'player_number': self.model.player_num, 
-                                    'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                    'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
+                                'player_number': self.model.player_num, 
+                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
+                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
                 
                 if self.model.scroll_collision_index != -1:
                     connection.Send({'action': 'update_entities', 
                                     'player_number': self.model.player_num, 
-                                    'scroll_collision_index': self.model.scroll_collision_index})               
+                                    'scroll_collision_index': self.model.scroll_collision_index})
 
-                
-            #print self.model.maze.maze_matrix
-            # # if self.ready is True
-            # if self.ready:
-            #   # write some text
-            #   self.screen.blit(self.font.render('Ready', True, (0, 0, 255)), (400-self.font.size('Ready')[0]/2, 290))
-            #   # update the screen
-            #   pygame.display.flip()
-            # # print 'Waiting for players...'
-            # elif not self.start:
-            #   # write some text
-            #   self.screen.blit(self.font.render('Waiting for players...', True, (255, 255, 255)), (400-self.font.size('Waiting for players...')[0]/2, 290))
-            #   # update the screen
-            #   pygame.display.flip()
+                if not self.model.players[self.model.player_num].still_alive:
+                    connection.Send({'action': 'update_alive', 
+                                    'player_number': self.model.player_num,
+                                    'still_alive': False})
+            else:
+                connection.Send({'action': 'lobby', 
+                                'player_number': self.model.player_num, 
+                                'p_ready': self.model.player_ready,
+                                'is_players_ready': self.model.is_players_ready})        ##this part for server
     
             # wait 25 milliseconds
-            #pygame.time.wait(10)
+            #pygame.time.wait(1)
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
         self.model = model
         self.move_ticker = 0
         self.REFRESH_RATE = 0 #how many loops before it updates the velocity
-        self.DIAG_VEL = 2/1.4 #self.model.players[self.model.player_num].DIAG_VEL
-        self.VEL = 2 #self.model.players[self.model.player_num].VEL
-        #self.players = self.model.players  #set attributes of players
-        #self.collision = self.model.collision
-        #self.lists = self.model.lists
+        self.DIAG_VEL = 3/1.4 #self.model.players[self.model.player_num].DIAG_VEL
+        self.VEL = 3 #self.model.players[self.model.player_num].VEL
+        self.pressed = False
     def handle_event(self, event):
+        if not self.model.players[self.model.player_num].still_alive:
+            return
         y_vel = 0
         x_vel = 0
         keys = pygame.key.get_pressed()     ##find what keys were pressed
         #self.model.run_model() ## run the model so we can change its attributes
-        if self.move_ticker >= self.REFRESH_RATE:
+        if self.move_ticker > self.REFRESH_RATE:
             ## change diagonals first
             if keys[pygame.K_a] and keys[pygame.K_s]:
                 x_vel = -self.DIAG_VEL
@@ -572,12 +833,21 @@ class PyGameKeyboardController(object):
         #self.model.players[self.model.player_num].update_relative_positions(rel_x_pos, rel_y_pos)
         self.move_ticker += 1
 
+    def handle_lobby_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE  and not self.pressed:     ##if space is pressed,
+                self.model.player_ready = not self.model.player_ready   ##ready is swapped (false- true, true- false)
+                self.pressed = True
+        else:
+            self.pressed = False
+        #print self.model.player_ready
+
 if __name__ == '__main__':
     pygame.init()
 
     print 'Enter the server ip address'
     print 'Empty for localhost'
-    # ask the server ip address
+    # ask the server ip addresss
     #server = raw_input('server ip: ')
     # control if server is empty
     #if server == '':
@@ -585,14 +855,12 @@ if __name__ == '__main__':
     #server = '10.7.24.168'
     server = 'localhost'
     # init the listener
-
-
-
+    t1 = Time()
     model = EscapeTheMazeClientModel()
     size = (model.WINDOW_WIDTH, model.WINDOW_HEIGHT)
     screen = pygame.display.set_mode(size)
     controller = PyGameKeyboardController(model)
-    listener = Listener(model, server, 8000)
+    listener = Listener(model, server, 32500)
     view = PygameEscapeTheMazeView(model, screen, listener)
     running = True
     while running:
@@ -607,5 +875,22 @@ if __name__ == '__main__':
             model.run_model() ## run the model
             controller.handle_event(event)
             view.draw()
+        elif listener.load_screen:
+            controller.handle_lobby_event(event)
+            t1.reset_timer()
+            time_elapsed = t1.current_time()
+            view.draw_load_screen()
+            if time_elapsed > 1600:
+                listener.ready = True
+                listener.load_screen = False
+            for boolean in model.is_players_ready:
+                if boolean == False:
+                    listener.load_screen = False
+                    t1.reset_timer_bool()
+        elif listener.ready:
+            print 'ready'
+            listener.start = True
         else:
+            print 'here'
+            controller.handle_lobby_event(event)
             view.draw_lobby()

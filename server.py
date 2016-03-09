@@ -1,7 +1,3 @@
-# Excuse me for the my bad English, I hope you can understand my comments
-# pygame site: www.pygame.org
-
-# import pygame
 import pygame
 # import network modules
 from PodSixNet.Channel import Channel
@@ -26,15 +22,35 @@ class GenerateMaze(object):
 class EscapeTheMazeServerModel(object):
     def __init__(self):
         self.players = [] ##keep empty
-        self.NUMBER_OF_CHARACTERS = 2
-        self.NUMBER_OF_SCROLLS = 8
-        self.maze = GenerateMaze(7, 7)
+        self.NUMBER_OF_CHARACTERS = 1
+        self.NUMBER_OF_SCROLLS = 1
+        self.maze = GenerateMaze(2, 2)
+        #locations = GenerateCharacterLocations(self)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
         self.scroll_list = []
+        self.still_alive = []
+        self.exit = []
+        self.is_players_ready = []
+        for i in range(self.NUMBER_OF_CHARACTERS):
+            self.still_alive.append(False)
+        self.connected_players = 0
         #locations.char_list
         GenerateCharacterLocations(self)
         GenerateScrollLocations(self)
+        GenerateExitLocation(self)
+
+class GenerateExitLocation(object):
+    def __init__(self,model):
+        self.model = model
+        self.maze = model.maze
+        x = random.randint(0, self.maze.MAZE_LENGTH - 1)
+        x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+        y = random.randint(0, self.maze.MAZE_HEIGHT - 1)
+        y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
+        exit_entity = [x_pos, y_pos]
+        self.model.exit = exit_entity
+
 class GenerateScrollLocations(object):
     def __init__(self, model):
         self.model = model
@@ -46,7 +62,6 @@ class GenerateScrollLocations(object):
             y = random.randint(0, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             scroll_entity = [x_pos, y_pos]
-
             for char in self.model.char_list:
                 if not(x_pos == char[0] and y_pos == char[1]):
                     if len(self.model.scroll_list) != 0:
@@ -57,25 +72,31 @@ class GenerateScrollLocations(object):
                     self.add_scroll = False
             if self.add_scroll:
                 self.model.scroll_list.append(scroll_entity)
+                print "scroll", scroll_entity
             self.add_scroll = True
+            
+
 
 class GenerateCharacterLocations(object):
     def __init__(self, model):
         self.model = model
         self.maze = model.maze
         self.add_char = True
+
+        monster_int = random.randint(0,(self.model.NUMBER_OF_CHARACTERS)-1)
+
         while len(self.model.char_list) < self.model.NUMBER_OF_CHARACTERS:
             x = random.randint(0, self.maze.MAZE_LENGTH - 1)
             x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             y = random.randint(0, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
-            #print x,y
-            char_entity = [x_pos, y_pos]
+            char_entity = [x_pos, y_pos, monster_int]
             if len(self.model.char_list) != 0:
                 for char in self.model.char_list:
                     if (x_pos == char[0] and y_pos == char[1]):
                         self.add_char = False
             if self.add_char:
+                print "char", char_entity
                 self.model.char_list.append(char_entity)
                 char = Character(x_pos, y_pos, 20, 20)
                 self.model.char.append(char)
@@ -97,15 +118,24 @@ class ClientChannel(Channel):
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
         # self.Character = None
-    
+        self.model = model
     # function called when a player begin a movement
     def Network_move(self, data):
         self.char.x_pos = data['rel_x_pos']
         self.char.y_pos = data['rel_y_pos']
         # send to all other clients the information about moving
         self._server.SendToAll(data)
+
+    def Network_update_alive(self, data):
+        self._server.SendToAll(data)
+
     def Network_update_entities(self, data):
         self._server.SendToAll(data)
+
+    def Network_lobby(self, data):
+        self.model.is_players_ready = data['is_players_ready']
+        self._server.SendToAll(data)
+
 # class representing the server
 class MyServer(Server):
     channelClass = ClientChannel
@@ -119,9 +149,6 @@ class MyServer(Server):
         self.start = False
         # time before strating the game in milliseconds
         self.wait_to_start = -1
-        
-        #self.characters = (Character(640/2 + 20, 450, 20, 20),Character(640/2 - 20, 450, 20, 20))
-        
         # addresss and port at which server is started
         address, port = kwargs['localaddr']
         
@@ -134,22 +161,25 @@ class MyServer(Server):
         
         # add player to the list
         self.model.players.append(player)
+        self.model.connected_players = len(self.model.players)
         # set the bar rect of the player
         player.char = self.model.char[len(self.model.players)-1]      ##add player.char to players[]
         #player.Char = self.characters[len(self.players)-1]
         # send to the player his number
+        # self.model.
         player.Send({'action': 'number', 'num': len(self.model.players)-1})
-        #print len(self.model.players) -1
         player.Send({'action': 'generate_maze', 'maze_matrix' : self.model.maze.maze_matrix})
         player.Send({'action': 'initialize_entities', 'char_list' : self.model.char_list, 'scroll_list' : self.model.scroll_list})
+        player.Send({'action': 'exit_location', 'exit': self.model.exit})
+        # player.Send({'action': 'monster_number', 'monster_num': self.monster})
+        # player.Send({'action': 'is_monster', 'monster': self.monster_list})  
         # if there are two player we can start the game
         #print len(self.model.players)
         #print self.model.number_of_characters
-        if len(self.model.players) == self.model.NUMBER_OF_CHARACTERS: #self.model.NUMBER_OF_CHARACTERS:
-            # send to all players the ready message
-            self.SendToAll({'action': 'ready'}) 
-            # wait 4 seconds before starting the game
-            self.wait_to_start = 300
+        #print self.model.connected_players
+        #player.Send({'action': 'ready_players', 'connected_players': self.model.connected_players})
+        #if not self.start:
+        self.SendToAll({'action': 'ready_players', 'connected_players': self.model.connected_players})
     
     # send all clients the same data
     def SendToAll(self, data):
@@ -162,8 +192,29 @@ class MyServer(Server):
             myserver.Pump()
             # if the game is started
             # wait 25 milliseconds
-            #pygame.time.wait(10)
+            #pygame.time.wait(2)
             # reduce wait to start time if necessary
+            if not self.start:
+                #print self.model.is_players_ready
+                ready = True
+                if len(self.model.is_players_ready) == 0:
+                    ready = False
+                for player_ready in self.model.is_players_ready:
+                    if not player_ready:
+                        ready = False
+                if len(self.model.is_players_ready) != self.model.NUMBER_OF_CHARACTERS:
+                    ready = False
+                self.ready = ready
+                        #print 'not ready'
+                if self.ready:
+                    #print 'ready'
+                    self.SendToAll({'action': 'ready', 
+                                    'player_ready': self.ready})
+                pygame.time.wait(20)
+                    #self.ready = False
+                    #self.start = True
+                    # wait 4 seconds before starting the game
+"""                    self.wait_to_start = 300
             if self.wait_to_start > 0:
                 self.wait_to_start -= 25
             # if time = 0 start the game
@@ -171,7 +222,8 @@ class MyServer(Server):
                 self.start = True
                 self.wait_to_start = -1
                 # send to all player the start message
-                self.SendToAll({'action': 'start'})
+                print 'started'
+                self.SendToAll({'action': 'start'})"""
 
 print 'Enter the ip address of the server. Normally the ip address of the computer.'
 print 'example: localhost or 192.168.0.2'
@@ -185,6 +237,6 @@ address = 'localhost'
 #address = '10.7.24.168'
 # inizialize the server
 model = EscapeTheMazeServerModel()
-myserver = MyServer(model, localaddr=(address, 8000))
+myserver = MyServer(model, localaddr=(address, 32500))
 # start mainloop
 myserver.Loop()
