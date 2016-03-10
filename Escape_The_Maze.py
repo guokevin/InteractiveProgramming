@@ -50,14 +50,11 @@ class PygameEscapeTheMazeView(object):
 
             ##if you are in a certain distance of the exit
             dist = self.model.cartesian_dist()
-            if self.altar_revealed:
-                if is_monster:
-                    altar_color = (pygame.Color('grey'))
-                else:
-                    altar_color = (pygame.Color('black'))
+            if self.altar_revealed and not is_monster:
+                altar_color = (pygame.Color('black'))
                 pygame.draw.rect(self.screen, altar_color, self.model.exit.rect)
                 self.altar_revealed = True
-            else:
+            elif not is_monster:
                 if dist < 200:
                     altar_color = ((192.0/200)*dist,(192.0/200)*dist,(192.0/200)*dist)
                     ##draw the exit
