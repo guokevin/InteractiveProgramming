@@ -3,7 +3,7 @@ from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
 from random import randint
 import random
-from Maze_Test import create_maze
+from Maze import create_maze
 import time
 
 
