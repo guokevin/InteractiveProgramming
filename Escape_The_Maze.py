@@ -36,6 +36,8 @@ class PygameEscapeTheMazeView(object):
         self.played = False
         self.win_ticker = 0
         self.fog_ticker = 0
+        self.lose_ticker = 0
+        self.played1 = False
 
     def draw(self):
         if self.listener.start and self.ticker > 30:
@@ -83,7 +85,7 @@ class PygameEscapeTheMazeView(object):
             ##draw all the characters
             for char in self.model.players:
                 #if self.model.players[self.model.player_num].still_alive:
-                # print char.win
+                print char.win
                 if char.still_alive and not char.win:
                     pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
             
@@ -99,12 +101,13 @@ class PygameEscapeTheMazeView(object):
             ##draw the scroll hud
             scrolls_collected = self.model.lists.total_number_of_scrolls - self.model.lists.number_of_scrolls
 
-            if self.model.lists.number_of_scrolls == 0 and self.model.monster_num != self.model.player_num and not self.model.spectator:
+            if self.model.lists.number_of_scrolls >= self.model.lists.total_number_of_scrolls and self.model.monster_num != self.model.player_num and not self.model.spectator:
                 self.screen.blit(self.font1.render("All Scrolls Have Been found!", True, (255,0,0)), (350, 700))
                 self.screen.blit(self.font1.render("GET TO THE ALTAR BEFORE HE EATS YOU!", True, (255,0,0)), (350, 750))
-            if not self.model.players[self.model.player_num].still_alive:
-                self.screen.fill((255,0,0))
-                self.screen.blit(self.font2.render("YOU GOT EATEN", True, (0,0,0)), (460, 500))
+            if scrolls_collected > self.model.lists.total_number_of_scrolls:
+                scrolls_collected = self.model.lists.total_number_of_scrolls
+            if scrolls_collected < 0:
+                scrolls_collected = 0
             for i in range(scrolls_collected):
                 pygame.draw.rect(self.screen, pygame.Color('white'), (20*i + 10, 10, 15, 15))
             self.screen.blit(self.font1.render(str(scrolls_collected) + '/' + str(self.model.lists.total_number_of_scrolls), True, (255,255,255)), (220, 6) )
@@ -120,6 +123,17 @@ class PygameEscapeTheMazeView(object):
                     self.screen.blit(self.font1.render("The Altar is still locked", True, (255,255,255)), (400, 700))
                 elif not self.model.spectator:
                     self.win_ticker = 0
+            if not self.model.players[self.model.player_num].still_alive:
+                self.model.lose_screen = True
+
+            if self.model.lose_screen:
+                if self.lose_ticker < 200:
+                    self.screen.fill((255,0,0))
+                    self.screen.blit(self.font2.render("YOU GOT EATEN", True, (0,0,0)), (460, 500))
+                    self.lose_ticker += 1
+                else:
+                    self.model.spectator = True
+                    self.model.lose_screen = False
 
             if self.model.win_screen:
                 if self.win_ticker < 200:
@@ -338,7 +352,7 @@ class Lists():
         self.scroll_rect_list = []
         #self.scroll_is_visible = [True, True]
         self.number_of_scrolls = 0
-        self.total_number_of_scrolls = 0
+        self.total_number_of_scrolls = 10
         self.scroll_list = []
         ####################################
         ##GERENATE MAZE SEGMENT RECTANGLES##
@@ -490,6 +504,7 @@ class EscapeTheMazeClientModel(object):
         self.win_screen = False
         self.spectator = False
         self.run_once = False
+        self.lose_screen = False
 
     def run_model(self):
         self.fog_of_war.update_fog_of_war()
@@ -624,7 +639,7 @@ class EscapeTheMazeClientModel(object):
         for scroll_entity in scroll_entity_list:
             ##create a new scroll in scroll_list for each entity in the list
             self.lists.scroll_list.append(Scroll(scroll_entity[0], scroll_entity[1], 10, 25, True))  ##adds a scroll into scroll_list, with width 7, height 20
-        self.lists.total_number_of_scrolls = len(self.lists.scroll_list)
+        #self.lists.total_number_of_scrolls = len(self.lists.scroll_list)
         self.lists.number_of_scrolls = len(self.lists.scroll_list)
 
     def create_scroll_is_visible(self):
@@ -827,8 +842,6 @@ class PyGameKeyboardController(object):
         self.VEL = 6 #self.model.players[self.model.player_num].VEL
         self.pressed = False
     def handle_event(self, event):
-        if not self.model.players[self.model.player_num].still_alive:
-            return
         y_vel = 0
         x_vel = 0
         keys = pygame.key.get_pressed()     ##find what keys were pressed
