@@ -83,7 +83,7 @@ class PygameEscapeTheMazeView(object):
             ##draw all the characters
             for char in self.model.players:
                 #if self.model.players[self.model.player_num].still_alive:
-                print char.win
+                # print char.win
                 if char.still_alive and not char.win:
                     pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
             
