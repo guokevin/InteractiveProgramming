@@ -33,8 +33,8 @@ class EscapeTheMazeServerModel(object):
     def __init__(self, number_of_players):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = number_of_players
-        self.NUMBER_OF_SCROLLS = 12
-        self.MAZE_SIZE = 15
+        self.NUMBER_OF_SCROLLS = 3
+        self.MAZE_SIZE = 3
         self.maze = GenerateMaze(self.MAZE_SIZE, self.MAZE_SIZE)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
@@ -129,7 +129,6 @@ class Character(object):
 class ClientChannel(Channel):
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
-        # self.Character = None
         self.model = model
     # function called when a player begin a movement
     def Network_move(self, data):
@@ -143,12 +142,14 @@ class ClientChannel(Channel):
 
     def Network_update_entities(self, data):
         self._server.SendToAll(data)
+
     def Network_update_win(self, data):
         self._server.SendToAll(data)
 
     def Network_lobby(self, data):
         self.model.is_players_ready = data['is_players_ready']
         self._server.SendToAll(data)
+
     def Network_update_condition(self, data):
         self._server.SendToAll(data)
 
