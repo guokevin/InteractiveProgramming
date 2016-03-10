@@ -23,14 +23,15 @@ class EscapeTheMazeServerModel(object):
     def __init__(self):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = 2
-        self.NUMBER_OF_SCROLLS = 8
-        self.maze = GenerateMaze(10, 10)
+        self.NUMBER_OF_SCROLLS = 1
+        self.maze = GenerateMaze(4, 4)
         #locations = GenerateCharacterLocations(self)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
         self.scroll_list = []
         self.still_alive = []
         self.exit = []
+        self.is_players_ready = []
         for i in range(self.NUMBER_OF_CHARACTERS):
             self.still_alive.append(False)
         self.connected_players = 0
@@ -61,7 +62,6 @@ class GenerateScrollLocations(object):
             y = random.randint(0, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             scroll_entity = [x_pos, y_pos]
-
             for char in self.model.char_list:
                 if not(x_pos == char[0] and y_pos == char[1]):
                     if len(self.model.scroll_list) != 0:
@@ -72,7 +72,9 @@ class GenerateScrollLocations(object):
                     self.add_scroll = False
             if self.add_scroll:
                 self.model.scroll_list.append(scroll_entity)
+                print "scroll", scroll_entity
             self.add_scroll = True
+            
 
 
 class GenerateCharacterLocations(object):
@@ -88,16 +90,13 @@ class GenerateCharacterLocations(object):
             x_pos = x*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
             y = random.randint(0, self.maze.MAZE_HEIGHT - 1)
             y_pos = y*self.maze.MATRIX_CENTERS*2 + self.maze.MATRIX_CENTERS
-            #print x,y
-            # print len(self.model.char_list), monster_int
-            
             char_entity = [x_pos, y_pos, monster_int]
- 
             if len(self.model.char_list) != 0:
                 for char in self.model.char_list:
                     if (x_pos == char[0] and y_pos == char[1]):
                         self.add_char = False
             if self.add_char:
+                print "char", char_entity
                 self.model.char_list.append(char_entity)
                 char = Character(x_pos, y_pos, 20, 20)
                 self.model.char.append(char)
@@ -119,7 +118,7 @@ class ClientChannel(Channel):
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
         # self.Character = None
-    
+        self.model = model
     # function called when a player begin a movement
     def Network_move(self, data):
         self.char.x_pos = data['rel_x_pos']
@@ -130,7 +129,14 @@ class ClientChannel(Channel):
     def Network_update_alive(self, data):
         self._server.SendToAll(data)
 
+    def Network_update_win(self, data):
+        self._server.SendToAll(data)
+
     def Network_update_entities(self, data):
+        self._server.SendToAll(data)
+
+    def Network_lobby(self, data):
+        self.model.is_players_ready = data['is_players_ready']
         self._server.SendToAll(data)
 
 # class representing the server
@@ -173,14 +179,10 @@ class MyServer(Server):
         # if there are two player we can start the game
         #print len(self.model.players)
         #print self.model.number_of_characters
+        #print self.model.connected_players
+        #player.Send({'action': 'ready_players', 'connected_players': self.model.connected_players})
+        #if not self.start:
         self.SendToAll({'action': 'ready_players', 'connected_players': self.model.connected_players})
-# 
-        if len(self.model.players) == self.model.NUMBER_OF_CHARACTERS:
-            # send to all players the ready message
-            # self.SendToAll({'action': 'monster_list'})
-            self.SendToAll({'action': 'ready'}) 
-            # wait 4 seconds before starting the game
-            self.wait_to_start = 300
     
     # send all clients the same data
     def SendToAll(self, data):
@@ -195,6 +197,27 @@ class MyServer(Server):
             # wait 25 milliseconds
             #pygame.time.wait(2)
             # reduce wait to start time if necessary
+            if not self.start:
+                #print self.model.is_players_ready
+                ready = True
+                if len(self.model.is_players_ready) == 0:
+                    ready = False
+                for player_ready in self.model.is_players_ready:
+                    if not player_ready:
+                        ready = False
+                if len(self.model.is_players_ready) != self.model.NUMBER_OF_CHARACTERS:
+                    ready = False
+                self.ready = ready
+                        #print 'not ready'
+                if self.ready:
+                    #print 'ready'
+                    self.SendToAll({'action': 'ready', 
+                                    'player_ready': self.ready})
+                pygame.time.wait(20)
+                    #self.ready = False
+                    #self.start = True
+                    # wait 4 seconds before starting the game
+"""                    self.wait_to_start = 300
             if self.wait_to_start > 0:
                 self.wait_to_start -= 25
             # if time = 0 start the game
@@ -202,18 +225,19 @@ class MyServer(Server):
                 self.start = True
                 self.wait_to_start = -1
                 # send to all player the start message
-                self.SendToAll({'action': 'start'})
+                print 'started'
+                self.SendToAll({'action': 'start'})"""
 
 print 'Enter the ip address of the server. Normally the ip address of the computer.'
 print 'example: localhost or 192.168.0.2'
 print 'Empty for localhost'
 # ip address of the server (normally the ip address of the computer)
-#address = raw_input('Server ip: ')
+# address = raw_input('Server ip: ')
 
 # control if address is empty
-#if address == '':
+# if address == '':
 address = 'localhost'
-#address = '10.7.24.168'
+# address = '10.7.64.193'
 # inizialize the server
 model = EscapeTheMazeServerModel()
 myserver = MyServer(model, localaddr=(address, 31500))
