@@ -16,6 +16,7 @@ amnesia_sound = pygame.mixer.Sound('Amnesia_Theme.ogg')
 illuminati_sound = pygame.mixer.Sound('Illuminati_Sound.ogg')
 underground_sound = pygame.mixer.Sound('Underground_Theme.ogg')
 sewers_sound = pygame.mixer.Sound('Sewers_Theme.ogg')
+dying_sound = pygame.mixer.Sound('Dying_Sound.ogg')
 scroll_sound = pygame.mixer.Sound('Scroll_Collect.ogg')
 connect_sound = pygame.mixer.Sound('Connect_Sound.ogg')
 
@@ -478,6 +479,7 @@ class EscapeTheMazeClientModel(object):
             if self.players[self.player_num].rect.colliderect(self.monster.rect) and self.player_num != self.monster_num:
                 # print 'collided'
                 # print self.player_num, self.players[self.player_num].rect, self.monster_num, self.players[self.monster_num].rect
+                dying_sound.play()
                 self.players[self.player_num].still_alive = False
         if self.ticker < 51:
             self.ticker += 1
