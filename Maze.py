@@ -138,9 +138,13 @@ def create_maze(X, Y):
     # Print the map
     maze = []
     for i in range(len(maze_map)):
-        a = random.randint(0, X*2)
-        b = random.randint(0, X*2)
-        c = random.randint(0, X*2)
+        a = 0
+        b = 0
+        c = 0
+        while(a == b or a == b or c == b):
+          a = random.randint(0, X*2)
+          b = random.randint(0, X*2)
+          c = random.randint(0, X*2)
 
         maze_row = []
         for j in range(len(maze_map[0])):
