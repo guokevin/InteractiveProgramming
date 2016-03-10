@@ -33,8 +33,8 @@ class EscapeTheMazeServerModel(object):
     def __init__(self, number_of_players):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = number_of_players
-        self.NUMBER_OF_SCROLLS = 3
-        self.MAZE_SIZE = 3
+        self.NUMBER_OF_SCROLLS = 15
+        self.MAZE_SIZE = 20
         self.maze = GenerateMaze(self.MAZE_SIZE, self.MAZE_SIZE)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
