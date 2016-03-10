@@ -1,16 +1,9 @@
 import pygame
-# import network modules
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
-# random module to randomize the initial ball direction
 from random import randint
 import random
 from Maze_Test import create_maze
-#from Escape_the_Maze_backup import *
-
-# function which return a random value between -1 and -3
-# or between 1 and 3
-# this in userful for set the initial ball direction
 
 class GenerateMaze(object):
     def __init__(self, MAZE_LENGTH, MAZE_HEIGHT):
