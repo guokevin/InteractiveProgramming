@@ -33,8 +33,8 @@ class EscapeTheMazeServerModel(object):
     def __init__(self, number_of_players):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = number_of_players
-        self.NUMBER_OF_SCROLLS = 15
-        self.MAZE_SIZE = 20
+        self.NUMBER_OF_SCROLLS = 3
+        self.MAZE_SIZE = 3
         self.maze = GenerateMaze(self.MAZE_SIZE, self.MAZE_SIZE)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
@@ -85,7 +85,6 @@ class GenerateScrollLocations(object):
                     self.add_scroll = False
             if self.add_scroll:
                 self.model.scroll_list.append(scroll_entity)
-                print "scroll", scroll_entity
             self.add_scroll = True
             
 
@@ -110,7 +109,6 @@ class GenerateCharacterLocations(object):
                     if (x_pos == char[0] and y_pos == char[1]):
                         self.add_char = False
             if self.add_char:
-                print "char", char_entity
                 self.model.char_list.append(char_entity)
                 char = Character(x_pos, y_pos, 20, 20)
                 self.model.char.append(char)
@@ -131,7 +129,6 @@ class Character(object):
 class ClientChannel(Channel):
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
-        # self.Character = None
         self.model = model
     # function called when a player begin a movement
     def Network_move(self, data):
@@ -145,12 +142,14 @@ class ClientChannel(Channel):
 
     def Network_update_entities(self, data):
         self._server.SendToAll(data)
+
     def Network_update_win(self, data):
         self._server.SendToAll(data)
 
     def Network_lobby(self, data):
         self.model.is_players_ready = data['is_players_ready']
         self._server.SendToAll(data)
+
     def Network_update_condition(self, data):
         self._server.SendToAll(data)
 
@@ -200,7 +199,7 @@ class MyServer(Server):
             myserver.Pump()
             if self.story:
                 t1.reset_timer()
-                if t1.current_time() > 300:
+                if t1.current_time() > 600:
                     self.start = True
                     self.story = False
                     self.ready = False
@@ -210,7 +209,6 @@ class MyServer(Server):
                                 'start': self.start})
                 pygame.time.wait(20)
             elif not self.start and not self.story:
-                #print self.model.is_players_ready
                 t1.reset_timer()
                 ready = True
                 if len(self.model.is_players_ready) == 0:
@@ -221,15 +219,13 @@ class MyServer(Server):
                 if len(self.model.is_players_ready) != self.model.NUMBER_OF_CHARACTERS:
                     ready = False
                 self.ready = ready
-                        #print 'not ready'
                 if self.ready:
-                    #print 'ready'
                     self.SendToAll({'action': 'ready', 
                                     'player_ready': self.ready})
                     pygame.time.wait(20)
                 else:
                     t1.reset_timer_bool()
-                if t1.current_time() > 250:
+                if t1.current_time() > 300:
                     t1.reset_timer_bool()
                     self.story = True
                     self.ready = False
