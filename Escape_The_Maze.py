@@ -85,7 +85,6 @@ class PygameEscapeTheMazeView(object):
             ##draw all the characters
             for char in self.model.players:
                 #if self.model.players[self.model.player_num].still_alive:
-                print char.win
                 if char.still_alive and not char.win:
                     pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
             
@@ -361,7 +360,6 @@ class Lists():
         ####################################
         ###create rectangles for the maze to draw
         for i in range(self.maze.row_length):  ##for each of the rows
-            print self.maze.maze_matrix[i][:]
             for j in range(self.maze.column_length):      ##for each of the columns
                 ####four different cases here####
                 if self.maze.maze_matrix[i][j] == 1:
@@ -619,7 +617,6 @@ class EscapeTheMazeClientModel(object):
                             self.players[self.player_num].x_pos, 100)
 
     def create_players(self):
-        # print self.char_list
         for char_entity in self.char_list:
             ##create a new character in players for each entity in char_list
             new_char = Character(self.WINDOW_WIDTH/2, 
@@ -630,7 +627,6 @@ class EscapeTheMazeClientModel(object):
                                 40)
             self.monster_num = char_entity[2]
             self.players.append(new_char)
-            # print new_char.rect
             ##turns character entities into a Character to add to player
 
     def cartesian_dist(self):
@@ -648,7 +644,6 @@ class EscapeTheMazeClientModel(object):
         self.scroll_is_visible = []
         for i in range(self.lists.number_of_scrolls):
             self.scroll_is_visible.append(True)
-        #print len(self.lists.scroll_is_visible)
 
     def check_game(self):
         alive_players = 0
@@ -665,7 +660,6 @@ class EscapeTheMazeClientModel(object):
                                                                     self.players[self.monster_num].width,
                                                                     self.players[self.monster_num].height)
         self.monster = self.players[self.monster_num]
-        # print "player: ", self.players[self.player_num].rect , "monster: ", self.monster.rect
 
 # class for I/O on network
 # this represent the player, too
@@ -705,14 +699,11 @@ class Listener(ConnectionListener):
     def Network_generate_maze(self, data):
         self.model.maze.maze_matrix = data['maze_matrix']
         self.model.maze.row_length = len(self.model.maze.maze_matrix)
-        #print self.model.maze.row_length
         self.model.maze.column_length = len(self.model.maze.maze_matrix[0][:])
-        #print self.model.maze.column_length
 
     # get the player number
     def Network_number(self, data):
         self.model.player_num = data['num']
-        #print data['num']
     def Network_initialize_entities(self, data):
         #self.model.test = data['char_list']
         self.model.char_list = data['char_list']
@@ -778,14 +769,12 @@ class Listener(ConnectionListener):
                         underground_sound.play(-1)
                     if sound_int == 2:
                         sewers_sound.play(-1)
-                    #print self.model.player_number
                     self.model.collision = CollisionDetection(self.model.players[self.model.player_num], self.model)
                     self.model.lists = Lists(self.model.players[self.model.player_num], self.model.collision, self.model.maze)
                     self.model.create_scrolls(self.model.scroll_entity_list)
                     self.model.edit_maze_position()
                     self.model.edit_scroll_position()
                     self.model.edit_exit_position()
-                    #self.model.create_scroll_is_visible()
                     self.ran_initiations = True
                     self.model.create_monster()
 
@@ -919,7 +908,6 @@ class PyGameKeyboardController(object):
                 self.pressed = True
         else:
             self.pressed = False
-        #print self.model.player_ready
 
 if __name__ == '__main__':
     pygame.init()
