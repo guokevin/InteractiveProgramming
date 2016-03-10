@@ -138,12 +138,14 @@ def create_maze(X, Y):
     # Print the map
     maze = []
     for i in range(len(maze_map)):
-        n = random.randint(0, X*2)
-        p = random.randint(0, X*2)
+        a = random.randint(0, X*2)
+        b = random.randint(0, X*2)
+        c = random.randint(0, X*2)
+
         maze_row = []
         for j in range(len(maze_map[0])):
             #if(n >= rand_number or j == X or j == 0 or i == 0 or i == Y):
-            if maze_map[i][j] and ((j != n and j!= p) or j == 2*X or j == 0 or i == 0 or i == 2*Y):
+            if maze_map[i][j] and ((j != a and j!= b and j!= c) or j == 2*X or j == 0 or i == 0 or i == 2*Y):
               maze_row.append(1)
             else:
               maze_row.append(0)

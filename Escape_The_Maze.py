@@ -100,23 +100,25 @@ class PygameEscapeTheMazeView(object):
            
             ##draw the scroll hud
             scrolls_collected = self.model.lists.total_number_of_scrolls - self.model.lists.number_of_scrolls
-
-            if self.model.lists.number_of_scrolls >= self.model.lists.total_number_of_scrolls and self.model.monster_num != self.model.player_num and not self.model.spectator:
-                self.screen.blit(self.font1.render("All Scrolls Have Been found!", True, (255,0,0)), (350, 700))
-                self.screen.blit(self.font1.render("GET TO THE ALTAR BEFORE HE EATS YOU!", True, (255,0,0)), (350, 750))
-            if scrolls_collected > self.model.lists.total_number_of_scrolls:
-                scrolls_collected = self.model.lists.total_number_of_scrolls
+            scrolls_total = 10
+            if scrolls_collected > scrolls_total:
+                scrolls_collected = scrolls_total
             if scrolls_collected < 0:
                 scrolls_collected = 0
+
+            if scrolls_collected == scrolls_total and self.model.monster_num != self.model.player_num and not self.model.spectator:
+                self.screen.blit(self.font1.render("All Scrolls Have Been found!", True, (255,0,0)), (350, 700))
+                self.screen.blit(self.font1.render("GET TO THE ALTAR BEFORE HE EATS YOU!", True, (255,0,0)), (350, 750))
+
             for i in range(scrolls_collected):
                 pygame.draw.rect(self.screen, pygame.Color('white'), (20*i + 10, 10, 15, 15))
-            self.screen.blit(self.font1.render(str(scrolls_collected) + '/' + str(self.model.lists.total_number_of_scrolls), True, (255,255,255)), (220, 6) )
+            self.screen.blit(self.font1.render(str(scrolls_collected) + '/' + str(scrolls_total), True, (255,255,255)), (220, 6) )
 
             if self.model.monster_num == self.model.player_num:
                 self.screen.blit(self.font1.render("Monster", True, (0,0,0)), (460, 20))
 
             if self.model.player_num != self.model.monster_num and not self.model.spectator:
-                if (self.model.lists.number_of_scrolls == 0 and self.model.exit_collision) and not self.model.spectator:
+                if (scrolls_collected == scrolls_total and self.model.exit_collision) and not self.model.spectator:
                     self.model.players[self.model.player_num].win = True
                     self.model.win_screen = True
                 elif self.model.exit_collision:
@@ -180,16 +182,16 @@ class PygameEscapeTheMazeView(object):
             if self.model.is_players_ready[i]:
                 pygame.draw.rect(self.screen, pygame.Color('green'), (100*i + 300, 450, 70, 70))
         self.screen.blit(self.font3.render('ESCAPE THE MAZE', True, (255, 255, 255)), (200, 100))
-        if self.ticker > 300:
+        if self.ticker > 600:
             self.screen.blit(self.font4.render('0', True, (255, 255, 255)), (550, 700))
-        elif self.ticker > 200:
+        elif self.ticker > 400:
             self.screen.blit(self.font4.render('1', True, (255, 255, 255)), (550, 700))
-        elif self.ticker > 100:          
+        elif self.ticker > 200:          
             self.screen.blit(self.font4.render('2', True, (255, 255, 255)), (550, 700))
-        elif self.ticker < 100:
+        elif self.ticker < 200:
             self.screen.blit(self.font4.render('3', True, (255, 255, 255)), (550, 700))
 
-        if (self.ticker < 10) or (self.ticker > 100 and self.ticker < 110) or (self.ticker > 200 and self.ticker < 210) or (self.ticker > 300 and self.ticker < 310):
+        if (self.ticker < 10) or (self.ticker > 200 and self.ticker < 210) or (self.ticker > 400 and self.ticker < 410) or (self.ticker > 600 and self.ticker < 610):
             connect_sound.play()
 
         pygame.display.update()
@@ -352,7 +354,7 @@ class Lists():
         self.scroll_rect_list = []
         #self.scroll_is_visible = [True, True]
         self.number_of_scrolls = 0
-        self.total_number_of_scrolls = 10
+        self.total_number_of_scrolls = 0
         self.scroll_list = []
         ####################################
         ##GERENATE MAZE SEGMENT RECTANGLES##
@@ -639,7 +641,7 @@ class EscapeTheMazeClientModel(object):
         for scroll_entity in scroll_entity_list:
             ##create a new scroll in scroll_list for each entity in the list
             self.lists.scroll_list.append(Scroll(scroll_entity[0], scroll_entity[1], 10, 25, True))  ##adds a scroll into scroll_list, with width 7, height 20
-        #self.lists.total_number_of_scrolls = len(self.lists.scroll_list)
+        self.lists.total_number_of_scrolls = len(self.lists.scroll_list)
         self.lists.number_of_scrolls = len(self.lists.scroll_list)
 
     def create_scroll_is_visible(self):

@@ -200,7 +200,7 @@ class MyServer(Server):
             myserver.Pump()
             if self.story:
                 t1.reset_timer()
-                if t1.current_time() > 300:
+                if t1.current_time() > 600:
                     self.start = True
                     self.story = False
                     self.ready = False
@@ -229,7 +229,7 @@ class MyServer(Server):
                     pygame.time.wait(20)
                 else:
                     t1.reset_timer_bool()
-                if t1.current_time() > 250:
+                if t1.current_time() > 300:
                     t1.reset_timer_bool()
                     self.story = True
                     self.ready = False
