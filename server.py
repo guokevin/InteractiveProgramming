@@ -33,7 +33,7 @@ class EscapeTheMazeServerModel(object):
     def __init__(self, number_of_players):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = number_of_players
-        self.NUMBER_OF_SCROLLS = 15
+        self.NUMBER_OF_SCROLLS = 12
         self.MAZE_SIZE = 15
         self.maze = GenerateMaze(self.MAZE_SIZE, self.MAZE_SIZE)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
@@ -85,7 +85,6 @@ class GenerateScrollLocations(object):
                     self.add_scroll = False
             if self.add_scroll:
                 self.model.scroll_list.append(scroll_entity)
-                print "scroll", scroll_entity
             self.add_scroll = True
             
 
@@ -110,7 +109,6 @@ class GenerateCharacterLocations(object):
                     if (x_pos == char[0] and y_pos == char[1]):
                         self.add_char = False
             if self.add_char:
-                print "char", char_entity
                 self.model.char_list.append(char_entity)
                 char = Character(x_pos, y_pos, 20, 20)
                 self.model.char.append(char)
@@ -210,7 +208,6 @@ class MyServer(Server):
                                 'start': self.start})
                 pygame.time.wait(20)
             elif not self.start and not self.story:
-                #print self.model.is_players_ready
                 t1.reset_timer()
                 ready = True
                 if len(self.model.is_players_ready) == 0:
@@ -221,9 +218,7 @@ class MyServer(Server):
                 if len(self.model.is_players_ready) != self.model.NUMBER_OF_CHARACTERS:
                     ready = False
                 self.ready = ready
-                        #print 'not ready'
                 if self.ready:
-                    #print 'ready'
                     self.SendToAll({'action': 'ready', 
                                     'player_ready': self.ready})
                     pygame.time.wait(20)

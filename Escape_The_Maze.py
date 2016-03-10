@@ -51,7 +51,7 @@ class PygameEscapeTheMazeView(object):
             ##if you are in a certain distance of the exit
             dist = self.model.cartesian_dist()
             if self.altar_revealed or is_monster:
-                altar_color = (pygame.Color('black'))
+                altar_color = (pygame.Color('grey'))
                 pygame.draw.rect(self.screen, altar_color, self.model.exit.rect)
                 self.altar_revealed = True
             else:
@@ -200,7 +200,6 @@ class PygameEscapeTheMazeView(object):
         """draws the story and instructions before beginning the game"""
         self.screen.fill((0,0,0))
         if self.model.player_num == self.model.monster_num:
-            # print'monster'
             self.screen.blit(self.font6.render('You have been trapped in a maze and mutated into a monster.', True, (255, 255, 255)), (10, 200))
             self.screen.blit(self.font6.render('Kill your companions before they escape.', True, (255, 255, 255)), (175, 275))
 
@@ -544,7 +543,7 @@ class EscapeTheMazeClientModel(object):
     def update_scrolls(self):
         if self.player_num != self.monster_num:
             self.scroll_collision_index = self.players[self.player_num].rect.collidelist(self.lists.scroll_rect_list)
-        if self.temp_scroll_collision_index != -1:
+        if self.temp_scroll_collision_index != -1 and not self.spectator:
             if(self.lists.scroll_list[self.temp_scroll_collision_index].is_visible):
                 scroll_sound.play()
             self.lists.scroll_list[self.temp_scroll_collision_index].is_visible = False
@@ -555,6 +554,7 @@ class EscapeTheMazeClientModel(object):
             if scroll.is_visible:
                 number_of_scrolls += 1
         self.lists.number_of_scrolls = number_of_scrolls
+        if self.scroll_collision_index != -1:
 
     def update_exit(self):
         self.exit.rect = pygame.Rect(self.exit.x_pos - self.exit.width/2, self.exit.y_pos - self.exit.height/2, self.exit.width, self.exit.height)
@@ -669,16 +669,6 @@ class Listener(ConnectionListener):
         self.Connect((host, port))
         self.model = model
         self.ran_initiations = False
-        # set the window
-        #self.model = EscapeTheMazeModel()
-        # self.view = PygameEscapeTheMazeView(self.model,self.screen)
-        #self.controller = PyGameKeyboardController(self.model)
-        
-        # player number. this can be 0 (left player) or 1 (right player)
-        #self.num = None
-        # players' rects
-       # self.players = (Character(640/2 + 20, 450, 20, 20),Character(640/2 - 20, 450, 20, 20))
-
         # True if the server sended the ready message
         self.ready = False
         self.load_screen = False
@@ -689,6 +679,8 @@ class Listener(ConnectionListener):
         self.spectator = True
         # font for writing the scores
         self.font = pygame.font.SysFont('sans,freesans,courier,arial', 18, True)
+        self.played2 = False
+        self.played3 = False
 
     # function to manage character movement
     def Network_move(self, data):
@@ -807,22 +799,22 @@ class Listener(ConnectionListener):
                                     'player_number': self.model.player_num, 
                                     'scroll_collision_index': self.model.scroll_collision_index})
 
-                if not self.model.players[self.model.player_num].still_alive:
+                if not self.model.players[self.model.player_num].still_alive and not self.played2:
                     connection.Send({'action': 'update_alive', 
                                     'player_number': self.model.player_num,
                                     'still_alive': False})
-                if self.model.players[self.model.player_num].win:
+                    self.played2 = True
+                if self.model.players[self.model.player_num].win and not self.played3:
                     connection.Send({'action': 'update_win', 
                                     'player_number': self.model.player_num,
                                     'won': True})
+                    self.played3 = True
             else:
                 connection.Send({'action': 'lobby', 
                                 'player_number': self.model.player_num, 
                                 'p_ready': self.model.player_ready,
                                 'is_players_ready': self.model.is_players_ready})        ##this part for server
     
-            # wait 25 milliseconds
-            #pygame.time.wait(1)
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
