@@ -33,8 +33,8 @@ class EscapeTheMazeServerModel(object):
     def __init__(self, number_of_players):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = number_of_players
-        self.NUMBER_OF_SCROLLS = 12
-        self.MAZE_SIZE = 20
+        self.NUMBER_OF_SCROLLS = 1
+        self.MAZE_SIZE = 2
         self.maze = GenerateMaze(self.MAZE_SIZE, self.MAZE_SIZE)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
@@ -239,7 +239,8 @@ print 'Enter the ip address of the server. Normally the ip address of the comput
 print 'example: localhost or 192.168.0.2'
 print 'Empty for localhost'
 # ip address of the server (normally the ip address of the computer)
-address = raw_input('Server ip: ')
+#address = raw_input('Server ip: ')
+address = '10.7.24.142'
 number_of_players = int(raw_input('Players: '))
 #control if address is empty
 if address == '':

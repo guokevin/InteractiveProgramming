@@ -1,5 +1,3 @@
-
-
 import random
 import sys
 from os import path

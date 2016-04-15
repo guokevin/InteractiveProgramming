@@ -43,24 +43,24 @@ class PygameEscapeTheMazeView(object):
         if self.listener.start and self.ticker > 30:
             ## if the actual game has started background is grey
             self.screen.fill(pygame.Color('grey'))
-            is_monster = self.model.monster_num == self.model.player_num
+            #is_monster = self.model.monster_num == self.model.player_num
             ##create the mazes for the rectangle
             for rect in self.model.lists.maze_segment_rect_list:
                 pygame.draw.rect(self.screen, pygame.Color('black'), rect)
 
             ##if you are in a certain distance of the exit
             dist = self.model.cartesian_dist()
-            if self.altar_revealed or is_monster:
+            if self.altar_revealed and not self.model.is_monster:
                 altar_color = (pygame.Color('black'))
                 pygame.draw.rect(self.screen, altar_color, self.model.exit.rect)
                 self.altar_revealed = True
-            else:
+            elif not self.model.is_monster:
                 if dist < 200:
                     altar_color = ((192.0/200)*dist,(192.0/200)*dist,(192.0/200)*dist)
                     ##draw the exit
                     pygame.draw.rect(self.screen, altar_color, self.model.exit.rect)
             ##play the sound if you are close
-            if dist < 50 and not self.altar_revealed and not is_monster:
+            if dist < 50 and not self.altar_revealed and not self.model.is_monster:
                 self.altar_revealed = True
                 illuminati_sound.play() 
 
@@ -95,7 +95,7 @@ class PygameEscapeTheMazeView(object):
             ##create fog of war
             if not self.model.spectator:
                 self.fog_ticker += 1
-                self.model.fog_of_war.draw_fog_of_war(self.screen, is_monster, self.fog_ticker)
+                self.model.fog_of_war.draw_fog_of_war(self.screen, self.model.is_monster, self.fog_ticker)
            
             ##draw the scroll hud
             scrolls_collected = self.model.lists.total_number_of_scrolls - self.model.lists.number_of_scrolls
@@ -114,7 +114,7 @@ class PygameEscapeTheMazeView(object):
 
             for i in range(scrolls_collected):
                 pygame.draw.rect(self.screen, pygame.Color('white'), (20*i + 10, 10, 15, 15))
-            self.screen.blit(self.font1.render(str(scrolls_collected) + '/' + str(scrolls_total), True, (255,255,255)), (220, 6) )
+            self.screen.blit(self.font1.render(str(scrolls_collected) + '/' + str(scrolls_total) + 'Scrolls Collected', True, pygame.Color('blue')), (220, 6) )
 
             if self.model.monster_num == self.model.player_num:
                 self.screen.blit(self.font1.render("You Thirst for blood!", True, (0,0,0)), (460, 50))
@@ -150,16 +150,16 @@ class PygameEscapeTheMazeView(object):
             if self.model.spectator:
                 self.screen.blit(self.font2.render("Spectator", True, (0, 0, 255)), (400, 100))
 
-            if is_monster and self.model.alive_players == 1:
+            if self.model.is_monster and self.model.alive_players == 1:
                 self.screen.fill(pygame.Color('black'))
-                self.screen.blit(self.font2.render("You have killed all the imbeciles!", True, (255, 0, 0)), (300, 500))
-            elif is_monster and (self.model.alive_players - self.model.won_players == 1):
+                self.screen.blit(self.font2.render("You have killed all the imbeciles!", True, (255, 0, 0)), (250, 500))
+            elif self.model.is_monster and (self.model.alive_players - self.model.won_players == 1):
                 self.screen.fill(pygame.Color('black'))
                 self.screen.blit(self.font2.render("You killed " + str(len(self.model.players) - self.model.won_players -1) + " players", True, (255, 0, 0)), (400, 450))
-            if is_monster and len(self.model.players) - self.model.won_players == 1:
+            if self.model.is_monster and len(self.model.players) - self.model.won_players == 1:
                 self.screen.fill(pygame.Color('black'))
                 self.screen.blit(self.font2.render("You have failed!", True, (255, 0, 0)), (400, 450))
-                self.screen.blit(self.font2.render("You haven't killed a single person!", True, (255, 0, 0)), (300, 500))
+                self.screen.blit(self.font2.render("You haven't killed a single person!", True, (255, 0, 0)), (250, 500))
 
             self.model.check_game()
             pygame.display.update()
@@ -523,13 +523,13 @@ class EscapeTheMazeClientModel(object):
         self.lose_screen = False
         self.alive_players = -1
         self.won_players = -1
-
+        self.is_monster = -1
     def run_model(self):
         self.fog_of_war.update_fog_of_war()
 
     def update_monster(self):
         if self.ticker >20:
-            self.monster = self.players[self.monster_num]
+            self.is_monster = (self.monster_num == self.player_num)
             ##if you collide with the monster, still_alive = false
             if self.players[self.player_num].rect.colliderect(self.monster.rect) and self.player_num != self.monster_num and not self.spectator and not self.win_screen:
                 self.players[self.player_num].still_alive = False
