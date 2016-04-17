@@ -1,3 +1,8 @@
+##Header
+##Author - Cedric Kim, Kevin Guo
+##Fixed by Cedric Kim
+##Added server and player client restart (do not need to close clients and server to play again)
+
 import pygame
 # import network module
 from PodSixNet.Connection import connection, ConnectionListener
@@ -19,6 +24,7 @@ sewers_sound = pygame.mixer.Sound('Sewers_Theme.ogg')
 scroll_sound = pygame.mixer.Sound('Scroll_Collect.ogg')
 connect_sound = pygame.mixer.Sound('Connect_Sound.ogg')
 dying_sound = pygame.mixer.Sound('Dying_Sound.ogg')
+
 class PygameEscapeTheMazeView(object):
     def __init__(self, model, screen, listener):
         """Initialize the view with the specified model"""
@@ -43,7 +49,6 @@ class PygameEscapeTheMazeView(object):
         if self.listener.start and self.ticker > 30:
             ## if the actual game has started background is grey
             self.screen.fill(pygame.Color('grey'))
-            #is_monster = self.model.monster_num == self.model.player_num
             ##create the mazes for the rectangle
             for rect in self.model.lists.maze_segment_rect_list:
                 pygame.draw.rect(self.screen, pygame.Color('black'), rect)
@@ -84,11 +89,10 @@ class PygameEscapeTheMazeView(object):
 
             ##draw all the characters
             for char in self.model.players:
-                #if self.model.players[self.model.player_num].still_alive:
                 if char.still_alive and not char.win:
                     pygame.draw.rect(self.screen, pygame.Color(char.color), char.rect)
             
-            ##collision Rectangles
+            ##collision Rectangles for testing
             #for rect in self.model.lists.collision_rect_list:
             #    pygame.draw.rect(self.screen, pygame.Color('green'), rect)
 
@@ -153,14 +157,16 @@ class PygameEscapeTheMazeView(object):
             if self.model.is_monster and self.model.alive_players == 1:
                 self.screen.fill(pygame.Color('black'))
                 self.screen.blit(self.font2.render("You have killed all the imbeciles!", True, (255, 0, 0)), (250, 500))
+                self.model.game_over = True
             elif self.model.is_monster and (self.model.alive_players - self.model.won_players == 1):
                 self.screen.fill(pygame.Color('black'))
                 self.screen.blit(self.font2.render("You killed " + str(len(self.model.players) - self.model.won_players -1) + " players", True, (255, 0, 0)), (400, 450))
+                self.model.game_over = True
             if self.model.is_monster and len(self.model.players) - self.model.won_players == 1:
                 self.screen.fill(pygame.Color('black'))
                 self.screen.blit(self.font2.render("You have failed!", True, (255, 0, 0)), (400, 450))
                 self.screen.blit(self.font2.render("You haven't killed a single person!", True, (255, 0, 0)), (250, 500))
-
+                self.model.game_over = True
             self.model.check_game()
             pygame.display.update()
         elif self.ticker < 31:
@@ -284,7 +290,6 @@ class Maze(object):
         self.maze_matrix = []
         self.row_length = None
         self.column_length = None
-        #self.maze_segment = Maze_Segment(0, 0, 0, 0)
 
 class Maze_Segment(object):
     def __init__(self, x_pos, y_pos, width, height):
@@ -485,9 +490,7 @@ class CollisionDetection(object):
         self.character = character
         self.model = model
         self.char_is_colliding = False
-        # self.exit_collision = False
-        ##create rectangle list and boolean list
-        #def create_collision_rectangle():
+
     def return_collision_bool(self, rect, rect_list):
         """check if rect is intersecting with elements in maze_rect_list"""
         return rect.collidelist(rect_list) != -1
@@ -524,6 +527,8 @@ class EscapeTheMazeClientModel(object):
         self.alive_players = -1
         self.won_players = -1
         self.is_monster = -1
+        self.game_over = False
+        self.restart_game = False
     def run_model(self):
         self.fog_of_war.update_fog_of_war()
 
@@ -644,6 +649,7 @@ class EscapeTheMazeClientModel(object):
 
     def create_players(self):
         """creates a character"""
+        self.players = []
         for char_entity in self.char_list:
             ##create a new character in players for each entity in char_list
             new_char = Character(self.WINDOW_WIDTH/2, 
@@ -717,6 +723,29 @@ class Listener(ConnectionListener):
         self.played2 = False
         self.played3 = False
 
+    def reset_entities(self):
+        """restarts entities in order to restart the game"""
+        self.ready = False
+        self.load_screen = False
+        self.story = False
+        self.start = False
+        self.running = True
+        self.spectator = True
+        self.played2 = False
+        self.played3 = False
+        self.ran_initiations = False
+        self.model.ticker = 0
+        self.model.player_ready = False
+        self.model.win_screen = False
+        self.model.spectator = False
+        self.model.run_once = False
+        self.model.lose_screen = False
+        self.model.alive_players = -1
+        self.model.won_players = -1
+        self.model.game_over = False
+        self.model.restart_game = False
+
+
     # function to manage character movement
     def Network_move(self, data):
         if data['player_number'] != self.model.player_num:
@@ -732,7 +761,6 @@ class Listener(ConnectionListener):
     def Network_number(self, data):
         self.model.player_num = data['num']
     def Network_initialize_entities(self, data):
-        #self.model.test = data['char_list']
         self.model.char_list = data['char_list']
         self.model.scroll_entity_list = data['scroll_list']
         self.model.create_players()
@@ -746,22 +774,18 @@ class Listener(ConnectionListener):
         self.model.players[data['player_number']].win = data['won']
 
     def Network_update_entities(self, data):
-        #if data['player_number'] != self.model.player_num:
         self.model.temp_scroll_collision_index = data['scroll_collision_index']
 
     def Network_update_alive(self, data):
         self.model.players[data['player_number']].still_alive = data['still_alive']
     
-    # def Network_monster_number(self,data):
-    #     self.model.monster_num = data['monster_num']
     def Network_ready_players(self, data):
         self.model.connected_players = data['connected_players']
         self.model.is_players_ready = []
         for i in range(self.model.connected_players):
             self.model.is_players_ready.append(False)
 
-    def Network_lobby(self, data):
-        #self.model.connected_players = data['connected_players']   
+    def Network_lobby(self, data): 
         player_ready = data['p_ready']
         self.model.is_players_ready[data['player_number']] = player_ready
 
@@ -778,78 +802,83 @@ class Listener(ConnectionListener):
     def Network_start(self, data):
         self.ready = False
         self.start = True
-    
+    def Network_restart_game(self, data):
+        """sends restart data to rest of computers"""
+        self.model.restart_game = data['restart_game']
+
     # mainloop
     def update_listener(self):
-        if self.running:
-            # update connection
-            connection.Pump()
-            # update the listener
-            self.Pump()
-            if self.start:
-                self.ready = False
-                if not self.ran_initiations:
-                    sound_int = random.randint(0,2)
-                    if sound_int == 0:
-                        amnesia_sound.play(-1)
-                    if sound_int == 1:
-                        underground_sound.play(-1)
-                    if sound_int == 2:
-                        sewers_sound.play(-1)
-                    self.model.collision = CollisionDetection(self.model.players[self.model.player_num], self.model)
-                    self.model.lists = Lists(self.model.players[self.model.player_num], self.model.collision, self.model.maze)
-                    self.model.create_scrolls(self.model.scroll_entity_list)
-                    self.model.edit_maze_position()
-                    self.model.edit_scroll_position()
-                    self.model.edit_exit_position()
-                    self.ran_initiations = True
-                    self.model.create_monster()
+        # update connection
+        connection.Pump()
+        # update the listener
+        self.Pump()
+        if self.start:
+            self.ready = False
+            if not self.ran_initiations:
+                sound_int = random.randint(0,2)
+                if sound_int == 0:
+                    amnesia_sound.play(-1)
+                if sound_int == 1:
+                    underground_sound.play(-1)
+                if sound_int == 2:
+                    sewers_sound.play(-1)
+                self.model.collision = CollisionDetection(self.model.players[self.model.player_num], self.model)
+                self.model.lists = Lists(self.model.players[self.model.player_num], self.model.collision, self.model.maze)
+                self.model.create_scrolls(self.model.scroll_entity_list)
+                self.model.edit_maze_position()
+                self.model.edit_scroll_position()
+                self.model.edit_exit_position()
+                self.ran_initiations = True
+                self.model.create_monster()
 
-                # send to the server information about movement
-                self.model.update_exit()
-                self.model.update_scrolls()
-                self.model.lists.update_scroll_rect_list()
-                self.model.collision.update_character_collision()
-                connection.Send({'action': 'move', 
+            # send to the server information about movement
+            self.model.update_exit()
+            self.model.update_scrolls()
+            self.model.lists.update_scroll_rect_list()
+            self.model.collision.update_character_collision()
+            connection.Send({'action': 'move', 
+                            'player_number': self.model.player_num, 
+                            'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
+                            'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
+            self.model.lists.update_maze_segment_rect_list()
+            self.model.update_characters()
+            self.model.update_exit_collision()
+            connection.Send({'action': 'move', 
+                            'player_number': self.model.player_num, 
+                            'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
+                            'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
+            self.model.lists.update_collision_rect_list(self.model.player_num == self.model.monster_num)
+            self.model.lists.update_collision_rect_is_colliding_list()
+            self.model.update_monster()
+            connection.Send({'action': 'move', 
+                            'player_number': self.model.player_num, 
+                            'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
+                            'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
+            
+            if self.model.scroll_collision_index != -1:
+                connection.Send({'action': 'update_entities', 
                                 'player_number': self.model.player_num, 
-                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
-                self.model.lists.update_maze_segment_rect_list()
-                self.model.update_characters()
-                self.model.update_exit_collision()
-                connection.Send({'action': 'move', 
-                                'player_number': self.model.player_num, 
-                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
-                self.model.lists.update_collision_rect_list(self.model.player_num == self.model.monster_num)
-                self.model.lists.update_collision_rect_is_colliding_list()
-                self.model.update_monster()
-                connection.Send({'action': 'move', 
-                                'player_number': self.model.player_num, 
-                                'rel_x_pos': self.model.players[self.model.player_num].rel_x_pos, 
-                                'rel_y_pos': self.model.players[self.model.player_num].rel_y_pos})
-                
-                if self.model.scroll_collision_index != -1:
-                    connection.Send({'action': 'update_entities', 
-                                    'player_number': self.model.player_num, 
-                                    'scroll_collision_index': self.model.scroll_collision_index})
+                                'scroll_collision_index': self.model.scroll_collision_index})
 
-                if not self.model.players[self.model.player_num].still_alive: #and not self.played2:
-                    connection.Send({'action': 'update_alive', 
-                                    'player_number': self.model.player_num,
-                                    'still_alive': False})
-                    self.played2 = True
-                if self.model.players[self.model.player_num].win and not self.played3:
-                    connection.Send({'action': 'update_win', 
-                                    'player_number': self.model.player_num,
-                                    'won': True})
-                    self.played3 = True
-            else:
-                connection.Send({'action': 'lobby', 
-                                'player_number': self.model.player_num, 
-                                'p_ready': self.model.player_ready,
-                                'is_players_ready': self.model.is_players_ready})        ##this part for server
-    
+            if not self.model.players[self.model.player_num].still_alive: #and not self.played2:
+                connection.Send({'action': 'update_alive', 
+                                'player_number': self.model.player_num,
+                                'still_alive': False})
+                self.played2 = True
+            if self.model.players[self.model.player_num].win and not self.played3:
+                connection.Send({'action': 'update_win', 
+                                'player_number': self.model.player_num,
+                                'won': True})
+                self.played3 = True
+            if self.model.game_over:
+                connection.Send({'action': 'restart_game', 
+                        'restart_game': self.model.game_over})
+        else:
+            connection.Send({'action': 'lobby', 
+                            'player_number': self.model.player_num, 
+                            'p_ready': self.model.player_ready,
+                            'is_players_ready': self.model.is_players_ready})        ##this part for server
+
 
 class PyGameKeyboardController(object):
     def __init__(self, model):
@@ -916,20 +945,15 @@ class PyGameKeyboardController(object):
             if self.model.lists.collision_rect_is_colliding_list[0]:
                 self.model.move_objects(-1, 0)
                 self.model.players[self.model.player_num].rel_x_pos += 1
-                #self.model.players[self.model.player_num].x_pos += 1
             if self.model.lists.collision_rect_is_colliding_list[1]:
                 self.model.move_objects(1, 0)
                 self.model.players[self.model.player_num].rel_x_pos -= 1
-                #self.model.players[self.model.player_num].x_pos -= 1
             if self.model.lists.collision_rect_is_colliding_list[2]:
                 self.model.move_objects(0, -1)
                 self.model.players[self.model.player_num].rel_y_pos += 1
-                #self.model.players[self.model.player_num].y_pos += 1
             if self.model.lists.collision_rect_is_colliding_list[3]:
                 self.model.move_objects(0, 1)
                 self.model.players[self.model.player_num].rel_y_pos -= 1
-                #self.model.players[self.model.player_num].y_pos -= 1
-        #self.model.players[self.model.player_num].update_relative_positions(rel_x_pos, rel_y_pos)
         self.move_ticker += 1
 
     def handle_lobby_event(self, event):
@@ -952,6 +976,7 @@ if __name__ == '__main__':
         server = 'localhost'
     #server = '10.7.64.193'
     # init the listener
+
     model = EscapeTheMazeClientModel()
     size = (model.WINDOW_WIDTH, model.WINDOW_HEIGHT)
     screen = pygame.display.set_mode(size)
@@ -959,28 +984,32 @@ if __name__ == '__main__':
     listener = Listener(model, server, 31500)
     view = PygameEscapeTheMazeView(model, screen, listener)
     running = True
+
     while running:
-        listener.update_listener()
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+        while running and not model.restart_game:
+            listener.update_listener()
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+                if event.type == QUIT:
                     running = False
-            if event.type == QUIT:
-                running = False
-        if listener.start:
-            model.run_model() ## run the model
-            controller.handle_event(event)
-            view.draw()
-        elif listener.load_screen:
-            controller.handle_lobby_event(event)
-            view.draw_load_screen()
-            for boolean in model.is_players_ready:
-                if boolean == False:
-                    view.played = False
-                    view.ticker = 0
-                    listener.load_screen = False
-        elif listener.story:
-            view.draw_story()
-        else:
-            controller.handle_lobby_event(event)
-            view.draw_lobby()
+            if listener.start:
+                model.run_model() ## run the model
+                controller.handle_event(event)
+                view.draw()
+            elif listener.load_screen:
+                controller.handle_lobby_event(event)
+                view.draw_load_screen()
+                for boolean in model.is_players_ready:
+                    if boolean == False:
+                        view.played = False
+                        view.ticker = 0
+                        listener.load_screen = False
+            elif listener.story:
+                view.draw_story()
+            else:
+                controller.handle_lobby_event(event)
+                view.draw_lobby()
+        listener.reset_entities()
+        pygame.time.wait(2000)
