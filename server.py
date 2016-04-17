@@ -33,8 +33,8 @@ class EscapeTheMazeServerModel(object):
     def __init__(self, number_of_players):
         self.players = [] ##keep empty
         self.NUMBER_OF_CHARACTERS = number_of_players
-        self.NUMBER_OF_SCROLLS = 1
-        self.MAZE_SIZE = 2
+        self.NUMBER_OF_SCROLLS = 10
+        self.MAZE_SIZE = 10
         self.maze = GenerateMaze(self.MAZE_SIZE, self.MAZE_SIZE)
         self.char_list = []     ##this list contains a list of attributes for each character (gets sent over network)
         self.char = []          ##this creates characters for the server
@@ -224,12 +224,12 @@ class MyServer(Server):
         while not self.model.restart_game:
             # update server connection
             myserver.Pump()
+            if not self.model.ran:
                 self.SendToAll({'action': 'generate_maze', 'maze_matrix' : self.model.maze.maze_matrix})
                 self.SendToAll({'action': 'initialize_entities', 'char_list' : self.model.char_list, 'scroll_list' : self.model.scroll_list})
                 self.SendToAll({'action': 'exit_location', 'exit': self.model.exit})
                 self.SendToAll({'action': 'ready_players', 'connected_players': self.model.connected_players})
                 self.model.ran = True
-                #pass
             else:
                 if self.story:
                     t1.reset_timer()
